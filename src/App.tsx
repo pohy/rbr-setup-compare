@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import type { CarSetup } from './lib/lsp-parser.ts'
 import { compareSetups } from './lib/compare.ts'
+import { sanitizeSetup } from './lib/sanitize.ts'
 import { DropZone } from './components/DropZone.tsx'
 import { ComparisonTable } from './components/ComparisonTable.tsx'
 
@@ -8,7 +9,7 @@ function App() {
   const [setups, setSetups] = useState<CarSetup[]>([])
 
   const handleFilesAdded = useCallback((newSetups: CarSetup[]) => {
-    setSetups((prev) => [...prev, ...newSetups])
+    setSetups((prev) => [...prev, ...newSetups.map(sanitizeSetup)])
   }, [])
 
   const handleRemoveSetup = useCallback((index: number) => {

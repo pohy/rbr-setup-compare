@@ -1,9 +1,13 @@
 import type { CarSetup } from './lsp-parser.ts'
+import { getUnit } from './sanitize.ts'
+
+const TOLERANCE = 0.0001
 
 export type ComparisonRow = {
   key: string
   values: (number | string | null)[]
   isDifferent: boolean
+  unit?: string
 }
 
 export type SectionComparison = {
@@ -51,13 +55,19 @@ export function compareSetups(setups: CarSetup[]): ComparisonResult {
       })
 
       const nonNull = values.filter((v) => v !== null)
+      const allNumeric = nonNull.length > 0 && nonNull.every((v) => typeof v === 'number')
       const isDifferent =
         nonNull.length > 1
-          ? nonNull.some((v) => String(v) !== String(nonNull[0]))
+          ? allNumeric
+            ? nonNull.some((v) => Math.abs((v as number) - (nonNull[0] as number)) >= TOLERANCE)
+            : nonNull.some((v) => String(v) !== String(nonNull[0]))
           : nonNull.length !== values.length
 
-      return { key, values, isDifferent }
-    })
+      // Hide rows where every value is null or 0
+      const isEmpty = values.every((v) => v === null || v === 0)
+
+      return { key, values, isDifferent, unit: getUnit(key), isEmpty }
+    }).filter((row) => !row.isEmpty)
 
     return { sectionName, rows }
   })

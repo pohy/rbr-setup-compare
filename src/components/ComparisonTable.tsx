@@ -218,6 +218,7 @@ function Section({
               {row.key}
             </div>
             {(() => {
+              const unit = row.unit ? ` ${row.unit}` : "";
               const maxDecimals = Math.max(
                 0,
                 ...row.values.map((v) => {
@@ -261,12 +262,12 @@ function Section({
                       diffSpan = (
                         <span className="text-green-400">
                           {" "}
-                          (+{fmtDiff(diff)})
+                          (+{fmtDiff(diff)}{unit})
                         </span>
                       );
                     } else if (diff < 0) {
                       diffSpan = (
-                        <span className="text-red-400"> ({fmtDiff(diff)})</span>
+                        <span className="text-red-400"> ({fmtDiff(diff)}{unit})</span>
                       );
                     }
                   } else if (String(val) !== String(ref)) {
@@ -288,11 +289,11 @@ function Section({
                       "-"
                     ) : diffSpan ? (
                       <span className="flex justify-between gap-2">
-                        <span>{displayVal}</span>
+                        <span>{displayVal}{unit}</span>
                         {diffSpan}
                       </span>
                     ) : (
-                      displayVal
+                      <>{displayVal}{unit}</>
                     )}
                   </div>
                 );
