@@ -15,6 +15,15 @@ function App() {
     setSetups((prev) => prev.filter((_, i) => i !== index))
   }, [])
 
+  const handleReorderSetup = useCallback((fromIndex: number, toIndex: number) => {
+    setSetups((prev) => {
+      const next = [...prev]
+      const [moved] = next.splice(fromIndex, 1)
+      next.splice(toIndex, 0, moved)
+      return next
+    })
+  }, [])
+
   const comparison = setups.length >= 1 ? compareSetups(setups) : null
 
   return (
@@ -38,6 +47,7 @@ function App() {
               result={comparison}
               setupNames={setups.map((s) => s.name)}
               onRemoveSetup={handleRemoveSetup}
+              onReorderSetup={handleReorderSetup}
             />
           )}
         </div>

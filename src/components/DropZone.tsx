@@ -38,13 +38,17 @@ export function DropZone({ onFilesAdded, hasFiles }: Props) {
   useEffect(() => {
     let dragCounter = 0
 
+    const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes('Files') ?? false
+
     const handleDragEnter = (e: DragEvent) => {
       e.preventDefault()
+      if (!hasFiles(e)) return
       dragCounter++
       if (dragCounter === 1) setIsDragging(true)
     }
     const handleDragLeave = (e: DragEvent) => {
       e.preventDefault()
+      if (!hasFiles(e)) return
       dragCounter--
       if (dragCounter === 0) setIsDragging(false)
     }
@@ -52,6 +56,7 @@ export function DropZone({ onFilesAdded, hasFiles }: Props) {
       e.preventDefault()
     }
     const handleDrop = (e: DragEvent) => {
+      if (!hasFiles(e)) return
       e.preventDefault()
       dragCounter = 0
       setIsDragging(false)
