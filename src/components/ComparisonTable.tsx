@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import clsx from "clsx";
 import type { ComparisonResult } from "../lib/compare.ts";
 
@@ -22,6 +22,17 @@ export function ComparisonTable({
   const dragIndexRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const ghostRef = useRef<HTMLElement | null>(null);
+  const paramColRef = useRef<HTMLDivElement>(null);
+  const [paramColWidth, setParamColWidth] = useState(0);
+
+  useEffect(() => {
+    const el = paramColRef.current;
+    if (!el) return;
+    setParamColWidth(el.offsetWidth);
+    const ro = new ResizeObserver(() => setParamColWidth(el.offsetWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const toggleSection = (name: string) => {
     setCollapsed((prev) => ({ ...prev, [name]: !prev[name] }));
@@ -64,14 +75,15 @@ export function ComparisonTable({
         className="grid text-sm"
         style={{
           gridTemplateColumns: `auto repeat(${setupNames.length}, auto)`,
-        }}
+          "--param-w": `${paramColWidth}px`,
+        } as React.CSSProperties}
       >
         {/* Header */}
         <div
           className="sticky top-0 z-10 grid grid-cols-subgrid bg-elevated text-text-secondary"
           style={{ gridColumn: `span ${colCount}` }}
         >
-          <div className="p-2 border border-border text-[10px] uppercase tracking-widest text-text-muted font-medium">
+          <div ref={paramColRef} className="sticky left-0 z-20 bg-elevated p-2 border border-border text-[10px] uppercase tracking-widest text-text-muted font-medium">
             Parameter
           </div>
           {setupNames.map((name, i) => (
@@ -111,6 +123,7 @@ export function ComparisonTable({
               onDragEnd={clearDragState}
               className={clsx(
                 "p-2 border border-border whitespace-nowrap cursor-grab",
+                i === 0 && "sticky left-[var(--param-w)] z-20 bg-elevated",
                 dragIndex !== null && dragIndex !== i && "opacity-50",
               )}
             >
@@ -176,23 +189,21 @@ function Section({
     >
       {/* Section header */}
       <div
-        className="sticky top-[37px] z-[5] bg-elevated cursor-pointer hover:bg-[#2e2e28] select-none p-2 border border-border border-l-2 border-l-accent uppercase tracking-wider text-xs font-medium text-text-primary"
+        className="sticky top-[37px] z-[8] bg-elevated hover:bg-[#2e2e28] cursor-pointer select-none border border-border"
         style={{ gridColumn: `span ${colCount}` }}
         onClick={onToggle}
       >
-        <span className="flex justify-between">
-          <span>
-            <span className="mr-2 inline-block w-4 text-center text-accent">
-              {isCollapsed ? "+" : "\u2212"}
-            </span>
-            {section.sectionName}
+        <div className="sticky left-0 w-fit p-2 border-l-2 border-l-accent uppercase tracking-wider text-xs font-medium text-text-primary whitespace-nowrap">
+          <span className="mr-2 inline-block w-4 text-center text-accent">
+            {isCollapsed ? "+" : "\u2212"}
           </span>
+          {section.sectionName}
           {diffCount > 0 && (
-            <span className="text-accent-dim">
+            <span className="ml-2 text-accent-dim">
               {diffCount} diff{diffCount > 1 ? "s" : ""}
             </span>
           )}
-        </span>
+        </div>
       </div>
 
       {/* Data rows */}
@@ -201,13 +212,16 @@ function Section({
           <div
             key={`${section.sectionName}-${row.key}`}
             className={clsx(
-              "grid grid-cols-subgrid",
+              "group grid grid-cols-subgrid",
               "hover:bg-elevated/50",
               row.isDifferent && "bg-diff-bg",
             )}
             style={{ gridColumn: `span ${colCount}` }}
           >
-            <div className="p-2 border border-border text-text-secondary whitespace-nowrap">
+            <div className={clsx(
+              "sticky left-0 z-[2] bg-base group-hover:bg-elevated p-2 border border-border text-text-secondary whitespace-nowrap",
+              row.isDifferent && "!bg-diff-row group-hover:!bg-diff-row-hover",
+            )}>
               {row.key}
             </div>
             {(() => {
@@ -275,6 +289,8 @@ function Section({
                     className={clsx(
                       "p-2 border border-border whitespace-nowrap",
                       cellColor,
+                      i === 0 && "sticky left-[var(--param-w)] z-[2] bg-base group-hover:bg-elevated",
+                      i === 0 && row.isDifferent && "!bg-diff-row group-hover:!bg-diff-row-hover",
                       dragIndex !== null && dragIndex !== i && "opacity-50",
                     )}
                   >

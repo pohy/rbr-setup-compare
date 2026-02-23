@@ -13,6 +13,8 @@
   --color-diff-positive: #4ade80;
   --color-diff-negative: #f87171;
   --color-diff-bg: oklch(0.7 0.15 85 / 0.06);
+  --color-diff-row: #15140f;
+  --color-diff-row-hover: #28271e;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
