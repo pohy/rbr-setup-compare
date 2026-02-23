@@ -7,6 +7,7 @@ type Props = {
   setupNames: string[];
   onRemoveSetup: (index: number) => void;
   onReorderSetup: (from: number, to: number) => void;
+  diffsOnly: boolean;
 };
 
 export function ComparisonTable({
@@ -14,9 +15,9 @@ export function ComparisonTable({
   setupNames,
   onRemoveSetup,
   onReorderSetup,
+  diffsOnly,
 }: Props) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const [diffsOnly, setDiffsOnly] = useState(true);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const dragIndexRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -58,28 +59,20 @@ export function ComparisonTable({
   const colCount = setupNames.length + 1;
 
   return (
-    <div ref={containerRef} className="overflow-auto max-h-[calc(100vh-8rem)]">
+    <div ref={containerRef} className="mx-auto w-fit">
       <div
-        className="grid text-sm font-mono w-fit"
+        className="grid text-sm"
         style={{
           gridTemplateColumns: `auto repeat(${setupNames.length}, auto)`,
         }}
       >
         {/* Header */}
         <div
-          className="sticky top-0 z-10 grid grid-cols-subgrid bg-gray-800 text-gray-200"
+          className="sticky top-0 z-10 grid grid-cols-subgrid bg-elevated text-text-secondary"
           style={{ gridColumn: `span ${colCount}` }}
         >
-          <div className="p-2 border border-gray-700">
-            <label className="flex items-center gap-2 cursor-pointer font-normal">
-              <input
-                type="checkbox"
-                checked={diffsOnly}
-                onChange={(e) => setDiffsOnly(e.target.checked)}
-                className="cursor-pointer"
-              />
-              <span className="text-xs text-gray-400">Diffs only</span>
-            </label>
+          <div className="p-2 border border-border text-[10px] uppercase tracking-widest text-text-muted font-medium">
+            Parameter
           </div>
           {setupNames.map((name, i) => (
             <div
@@ -93,7 +86,7 @@ export function ComparisonTable({
                 const container = containerRef.current;
                 if (container) {
                   const ghost = document.createElement("div");
-                  ghost.className = "text-sm font-mono";
+                  ghost.className = "text-sm";
                   for (const cell of container.querySelectorAll(
                     `[data-col="${i}"]`,
                   )) {
@@ -117,17 +110,17 @@ export function ComparisonTable({
               onDrop={handleDrop}
               onDragEnd={clearDragState}
               className={clsx(
-                "p-2 border border-gray-700 whitespace-nowrap cursor-grab",
+                "p-2 border border-border whitespace-nowrap cursor-grab",
                 dragIndex !== null && dragIndex !== i && "opacity-50",
               )}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate" title={name}>
+                <span className="truncate text-text-primary" title={name}>
                   {name.replace(/\.lsp$/, "")}
                 </span>
                 <button
                   onClick={() => onRemoveSetup(i)}
-                  className="text-xs text-gray-500 hover:text-red-400 shrink-0 cursor-pointer"
+                  className="text-xs text-text-muted hover:text-diff-negative shrink-0 cursor-pointer"
                 >
                   remove
                 </button>
@@ -183,20 +176,20 @@ function Section({
     >
       {/* Section header */}
       <div
-        className="sticky top-[37px] z-[5] bg-gray-700 cursor-pointer hover:bg-gray-600 select-none p-2 border border-gray-600 font-semibold text-gray-100"
+        className="sticky top-[37px] z-[5] bg-elevated cursor-pointer hover:bg-[#2e2e28] select-none p-2 border border-border border-l-2 border-l-accent uppercase tracking-wider text-xs font-medium text-text-primary"
         style={{ gridColumn: `span ${colCount}` }}
         onClick={onToggle}
       >
         <span className="flex justify-between">
           <span>
-            <span className="mr-2 inline-block w-4 text-center">
-              {isCollapsed ? "+" : "-"}
+            <span className="mr-2 inline-block w-4 text-center text-accent">
+              {isCollapsed ? "+" : "\u2212"}
             </span>
             {section.sectionName}
           </span>
           {diffCount > 0 && (
-            <span className="text-xs text-yellow-400">
-              ({diffCount} diff{diffCount > 1 ? "s" : ""})
+            <span className="text-accent-dim">
+              {diffCount} diff{diffCount > 1 ? "s" : ""}
             </span>
           )}
         </span>
@@ -209,12 +202,12 @@ function Section({
             key={`${section.sectionName}-${row.key}`}
             className={clsx(
               "grid grid-cols-subgrid",
-              "hover:bg-gray-800/50",
-              row.isDifferent ? "bg-gray-800/30" : "",
+              "hover:bg-elevated/50",
+              row.isDifferent && "bg-diff-bg",
             )}
             style={{ gridColumn: `span ${colCount}` }}
           >
-            <div className="p-2 border border-gray-700 text-gray-300 whitespace-nowrap">
+            <div className="p-2 border border-border text-text-secondary whitespace-nowrap">
               {row.key}
             </div>
             {(() => {
@@ -250,28 +243,28 @@ function Section({
                     })
                     .replace(",", ".");
 
-                let cellColor = "text-gray-200";
+                let cellColor = "text-text-primary";
                 let diffSpan: React.ReactNode = null;
                 const displayVal = !isNaN(numVal) ? fmtVal(numVal) : val;
 
                 if (val === null) {
-                  cellColor = "text-gray-600 italic";
+                  cellColor = "text-text-muted italic";
                 } else if (i > 0 && row.isDifferent) {
                   if (bothNumeric) {
                     if (diff > 0) {
                       diffSpan = (
-                        <span className="text-green-400">
+                        <span className="text-diff-positive">
                           {" "}
                           (+{fmtDiff(diff)}{unit})
                         </span>
                       );
                     } else if (diff < 0) {
                       diffSpan = (
-                        <span className="text-red-400"> ({fmtDiff(diff)}{unit})</span>
+                        <span className="text-diff-negative"> ({fmtDiff(diff)}{unit})</span>
                       );
                     }
                   } else if (String(val) !== String(ref)) {
-                    cellColor = "text-yellow-300";
+                    cellColor = "text-accent";
                   }
                 }
 
@@ -280,13 +273,13 @@ function Section({
                     key={i}
                     data-col={i}
                     className={clsx(
-                      "p-2 border border-gray-700 whitespace-nowrap",
+                      "p-2 border border-border whitespace-nowrap",
                       cellColor,
                       dragIndex !== null && dragIndex !== i && "opacity-50",
                     )}
                   >
                     {val === null ? (
-                      "-"
+                      "\u2014"
                     ) : diffSpan ? (
                       <span className="flex justify-between gap-2">
                         <span>{displayVal}{unit}</span>
