@@ -7,11 +7,12 @@ type Props = {
   hasFiles: boolean
   error: string | null
   onOpenDirectory?: () => void
+  onLoadExample?: () => void
   hasStoredHandle?: boolean
   isDirectorySupported?: boolean
 }
 
-export function DropZone({ onFilesSelected, onBrowse, hasFiles, error, onOpenDirectory, hasStoredHandle, isDirectorySupported }: Props) {
+export function DropZone({ onFilesSelected, onBrowse, hasFiles, error, onOpenDirectory, onLoadExample, hasStoredHandle, isDirectorySupported }: Props) {
   const [isDragging, setIsDragging] = useState(false)
 
   useEffect(() => {
@@ -87,6 +88,17 @@ export function DropZone({ onFilesSelected, onBrowse, hasFiles, error, onOpenDir
             className="mt-4 px-4 py-1.5 border border-border text-xs uppercase tracking-wider text-text-secondary hover:text-accent hover:border-accent cursor-pointer transition-colors"
           >
             {hasStoredHandle ? 'Reopen RBR folder' : 'Open RBR installation folder'}
+          </button>
+        )}
+        {onLoadExample && !isDragging && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onLoadExample()
+            }}
+            className="mt-3 px-4 py-1.5 border border-border text-xs uppercase tracking-wider text-text-secondary hover:text-accent hover:border-accent cursor-pointer transition-colors"
+          >
+            Show example comparison
           </button>
         )}
         {error && <p className="mt-4 text-diff-negative text-xs max-w-md text-center">{error}</p>}
