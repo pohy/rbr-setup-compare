@@ -4,6 +4,7 @@ import type { ScannedSetup } from "./lib/rbr-scanner.ts";
 import { compareSetups } from "./lib/compare.ts";
 import { useFilePicker } from "./lib/use-file-picker.ts";
 import { useRbrDirectory } from "./lib/use-rbr-directory.ts";
+import { loadExampleSetups } from "./lib/example-setups.ts";
 import { DropZone } from "./components/DropZone.tsx";
 import { ComparisonTable } from "./components/ComparisonTable.tsx";
 import { SetupBrowser } from "./components/SetupBrowser.tsx";
@@ -45,6 +46,10 @@ function App() {
 
   const rbr = useRbrDirectory();
   const [sidebarDismissed, setSidebarDismissed] = useState(false);
+
+  const handleLoadExample = useCallback(() => {
+    setSetups(loadExampleSetups());
+  }, []);
 
   const handleOpenDirectory = useCallback(async () => {
     if (rbr.hasStoredHandle) {
@@ -175,6 +180,7 @@ function App() {
         onBrowse={triggerFilePicker}
         error={error || rbr.error}
         onOpenDirectory={handleOpenDirectory}
+        onLoadExample={handleLoadExample}
         hasStoredHandle={rbr.hasStoredHandle}
         isDirectorySupported={rbr.isSupported}
       />
