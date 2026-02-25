@@ -145,7 +145,15 @@ export function ComparisonTable({
         {/* Sections */}
         {result.map((section) => {
           const visibleRows = diffsOnly
-            ? section.rows.filter((r) => r.isDifferent)
+            ? section.rows.filter((r, i, arr) => {
+                if (r.type === 'split') {
+                  const prev = arr[i - 1]
+                  const next = arr[i + 1]
+                  return prev?.type === 'data' && prev.isDifferent
+                      && next?.type === 'data' && next.isDifferent
+                }
+                return r.isDifferent
+              })
             : section.rows;
           if (diffsOnly && visibleRows.length === 0) return null;
           return (
@@ -180,7 +188,7 @@ function Section({
   onToggle: () => void;
   dragIndex: number | null;
 }) {
-  const diffCount = section.rows.filter((r) => r.isDifferent).length;
+  const diffCount = section.rows.filter((r) => r.type === 'data' && r.isDifferent).length;
 
   return (
     <div
@@ -208,7 +216,11 @@ function Section({
 
       {/* Data rows */}
       {!isCollapsed &&
-        rows.map((row) => (
+        rows.map((row, rowIndex) => {
+          if (row.type === 'split') return null;
+          const nextRow = rows[rowIndex + 1];
+          const ratios = nextRow?.type === 'split' ? nextRow.ratios : undefined;
+          return (
           <div
             key={`${section.sectionName}-${row.key}`}
             className={clsx(
@@ -288,8 +300,11 @@ function Section({
                     data-col={i}
                     className={clsx(
                       "p-2 border border-border whitespace-nowrap",
+                      ratios && "relative",
+                      ratios && (i === 0 ? "z-[3]" : "z-[1]"),
                       cellColor,
-                      i === 0 && "sticky left-[var(--param-w)] z-[2] bg-base group-hover:bg-elevated",
+                      i === 0 && !ratios && "z-[2]",
+                      i === 0 && "sticky left-[var(--param-w)] bg-base group-hover:bg-elevated",
                       i === 0 && row.isDifferent && "!bg-diff-row group-hover:!bg-diff-row-hover",
                       dragIndex !== null && dragIndex !== i && "opacity-50",
                     )}
@@ -304,12 +319,18 @@ function Section({
                     ) : (
                       <>{displayVal}{unit}</>
                     )}
+                    {ratios && (
+                      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-[3] bg-base px-1 text-[10px] leading-none text-text-muted whitespace-nowrap">
+                        {ratios[i] ?? "\u2014"}
+                      </span>
+                    )}
                   </div>
                 );
               });
             })()}
           </div>
-        ))}
+        );})}
     </div>
   );
 }
+
