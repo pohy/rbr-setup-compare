@@ -231,17 +231,12 @@ function Section({
           return (
             <div
               key={`${section.sectionName}-${row.key}`}
-              className={clsx(
-                "group grid grid-cols-subgrid",
-                "hover:bg-elevated/50",
-                row.isDifferent && "bg-diff-bg",
-              )}
+              className={clsx("group grid grid-cols-subgrid", "hover:bg-elevated/50")}
               style={{ gridColumn: `span ${colCount}` }}
             >
               <div
                 className={clsx(
                   "sticky left-0 z-[2] bg-base group-hover:bg-elevated p-2 border border-border text-text-secondary whitespace-nowrap",
-                  row.isDifferent && "!bg-diff-row group-hover:!bg-diff-row-hover",
                 )}
               >
                 {row.key}
@@ -268,6 +263,13 @@ function Section({
                   const numRef = ref !== null ? Number(ref) : NaN;
                   const bothNumeric = i > 0 && !Number.isNaN(numVal) && !Number.isNaN(numRef);
                   const diff = bothNumeric ? numVal - numRef : 0;
+                  const cellDiffers =
+                    i === 0
+                      ? false
+                      : bothNumeric
+                        ? Math.abs(diff) >= 0.0001
+                        : (val === null) !== (ref === null) ||
+                          (val !== null && ref !== null && String(val) !== String(ref));
                   const decimals = String(val).includes(".") ? String(val).split(".")[1].length : 0;
                   const fmtVal = (n: number) =>
                     n
@@ -318,7 +320,7 @@ function Section({
                         cellColor,
                         i === 0 && !ratios && "z-[2]",
                         i === 0 && "sticky left-[var(--param-w)] bg-base group-hover:bg-elevated",
-                        i === 0 && row.isDifferent && "!bg-diff-row group-hover:!bg-diff-row-hover",
+                        cellDiffers && "bg-diff-bg",
                         dragIndex !== null && dragIndex !== i && "opacity-50",
                       )}
                     >
