@@ -33,7 +33,17 @@ function App() {
   const [setups, setSetups] = useState<CarSetup[]>([]);
   const [diffsOnly, setDiffsOnly] = useState(true);
   // Track which relativePaths from the sidebar are currently loaded
-  const [loadedPaths, setLoadedPaths] = useState<Set<string>>(new Set());
+  const [loadedPaths, _setLoadedPaths] = useState<Set<string>>(new Set());
+  const setLoadedPaths = useCallback(
+    (update: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+      _setLoadedPaths((prev) => {
+        const next = typeof update === "function" ? update(prev) : update;
+        saveLoadedPaths(next);
+        return next;
+      });
+    },
+    [],
+  );
   const [loadingPaths, setLoadingPaths] = useState<Set<string>>(new Set());
   const hasRestoredRef = useRef(false);
 
@@ -69,7 +79,6 @@ function App() {
         setLoadedPaths((prev) => {
           const next = new Set(prev);
           next.delete(path);
-          saveLoadedPaths(next);
           return next;
         });
       } else {
@@ -78,11 +87,7 @@ function App() {
         try {
           const [loaded] = await rbr.loadSetups([setup]);
           setSetups((prev) => [...prev, { ...loaded, name: path }]);
-          setLoadedPaths((prev) => {
-            const next = new Set(prev).add(path);
-            saveLoadedPaths(next);
-            return next;
-          });
+          setLoadedPaths((prev) => new Set(prev).add(path));
         } finally {
           setLoadingPaths((prev) => {
             const next = new Set(prev);
@@ -99,7 +104,6 @@ function App() {
     setSetups((prev) => prev.filter((s) => !loadedPaths.has(s.name)));
     setLoadedPaths(new Set());
     setLoadingPaths(new Set());
-    saveLoadedPaths(new Set());
     await rbr.forgetDirectory();
     setSidebarDismissed(true);
   }, [rbr, loadedPaths]);
@@ -146,7 +150,6 @@ function App() {
       }
       setSetups((prev) => [...prev, ...results]);
       setLoadedPaths(loaded);
-      saveLoadedPaths(loaded);
       setLoadingPaths(new Set());
     })();
   }, [rbr]);
@@ -157,7 +160,7 @@ function App() {
       if (removed) {
         setLoadedPaths((lp) => {
           const next = new Set(lp);
-          if (next.delete(removed.name)) saveLoadedPaths(next);
+          next.delete(removed.name);
           return next;
         });
       }
@@ -260,7 +263,6 @@ function App() {
               onClick={() => {
                 setSetups([]);
                 setLoadedPaths(new Set());
-                saveLoadedPaths(new Set());
               }}
               className="text-xs text-text-muted hover:text-text-secondary cursor-pointer uppercase tracking-wider"
             >
