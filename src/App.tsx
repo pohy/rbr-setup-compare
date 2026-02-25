@@ -1,13 +1,13 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ComparisonTable } from "./components/ComparisonTable.tsx";
+import { DropZone } from "./components/DropZone.tsx";
+import { SetupBrowser } from "./components/SetupBrowser.tsx";
+import { compareSetups } from "./lib/compare.ts";
+import { loadExampleSetups } from "./lib/example-setups.ts";
 import type { CarSetup } from "./lib/lsp-parser.ts";
 import type { ScannedSetup } from "./lib/rbr-scanner.ts";
-import { compareSetups } from "./lib/compare.ts";
 import { useFilePicker } from "./lib/use-file-picker.ts";
 import { useRbrDirectory } from "./lib/use-rbr-directory.ts";
-import { loadExampleSetups } from "./lib/example-setups.ts";
-import { DropZone } from "./components/DropZone.tsx";
-import { ComparisonTable } from "./components/ComparisonTable.tsx";
-import { SetupBrowser } from "./components/SetupBrowser.tsx";
 
 const STORAGE_KEY = "rbr-loaded-paths";
 
@@ -51,8 +51,7 @@ function App() {
     setSetups((prev) => [...prev, ...newSetups]);
   }, []);
 
-  const { processFiles, triggerFilePicker, error } =
-    useFilePicker(handleFilesReady);
+  const { processFiles, triggerFilePicker, error } = useFilePicker(handleFilesReady);
 
   const rbr = useRbrDirectory();
   const [sidebarDismissed, setSidebarDismissed] = useState(false);
@@ -97,7 +96,7 @@ function App() {
         }
       }
     },
-    [rbr],
+    [rbr, setLoadedPaths],
   );
 
   const handleDisconnect = useCallback(async () => {
@@ -106,7 +105,7 @@ function App() {
     setLoadingPaths(new Set());
     await rbr.forgetDirectory();
     setSidebarDismissed(true);
-  }, [rbr, loadedPaths]);
+  }, [rbr, loadedPaths, setLoadedPaths]);
 
   // Restore previously loaded setups after scan completes
   useEffect(() => {
@@ -142,43 +141,40 @@ function App() {
           results.push({ ...parsed, name: setup.relativePath });
           loaded.add(setup.relativePath);
         } catch (e) {
-          console.error(
-            `[rbr-dir] Failed to restore ${setup.relativePath}:`,
-            e,
-          );
+          console.error(`[rbr-dir] Failed to restore ${setup.relativePath}:`, e);
         }
       }
       setSetups((prev) => [...prev, ...results]);
       setLoadedPaths(loaded);
       setLoadingPaths(new Set());
     })();
-  }, [rbr]);
+  }, [rbr, setLoadedPaths]);
 
-  const handleRemoveSetup = useCallback((index: number) => {
-    setSetups((prev) => {
-      const removed = prev[index];
-      if (removed) {
-        setLoadedPaths((lp) => {
-          const next = new Set(lp);
-          next.delete(removed.name);
-          return next;
-        });
-      }
-      return prev.filter((_, i) => i !== index);
-    });
-  }, []);
-
-  const handleReorderSetup = useCallback(
-    (fromIndex: number, toIndex: number) => {
+  const handleRemoveSetup = useCallback(
+    (index: number) => {
       setSetups((prev) => {
-        const next = [...prev];
-        const [moved] = next.splice(fromIndex, 1);
-        next.splice(toIndex, 0, moved);
-        return next;
+        const removed = prev[index];
+        if (removed) {
+          setLoadedPaths((lp) => {
+            const next = new Set(lp);
+            next.delete(removed.name);
+            return next;
+          });
+        }
+        return prev.filter((_, i) => i !== index);
       });
     },
-    [],
+    [setLoadedPaths],
   );
+
+  const handleReorderSetup = useCallback((fromIndex: number, toIndex: number) => {
+    setSetups((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  }, []);
 
   const comparison = setups.length >= 1 ? compareSetups(setups) : null;
   const showSidebar = rbr.carGroups.length > 0 && !sidebarDismissed;
@@ -253,6 +249,7 @@ function App() {
           <div className="flex items-center gap-3">
             {rbr.isSupported && !showSidebar && (
               <button
+                type="button"
                 onClick={handleOpenDirectory}
                 className="text-xs text-text-muted hover:text-text-secondary cursor-pointer uppercase tracking-wider"
               >
@@ -260,6 +257,7 @@ function App() {
               </button>
             )}
             <button
+              type="button"
               onClick={() => {
                 setSetups([]);
                 setLoadedPaths(new Set());
@@ -269,6 +267,7 @@ function App() {
               Clear all
             </button>
             <button
+              type="button"
               onClick={triggerFilePicker}
               className="text-xs font-medium text-accent hover:text-text-primary cursor-pointer uppercase tracking-wider"
             >
@@ -286,23 +285,23 @@ function App() {
 
         {/* Table */}
         <div className="flex-1 min-h-0 p-4">
-        <div className="h-full overflow-auto">
-          {comparison ? (
-            <ComparisonTable
-              result={comparison}
-              setupNames={setups.map((s) => s.name.split("/").pop()!)}
-              onRemoveSetup={handleRemoveSetup}
-              onReorderSetup={handleReorderSetup}
-              diffsOnly={diffsOnly && setups.length > 1}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-xs uppercase tracking-wider text-text-muted">
-                Check setups in the sidebar to compare
-              </p>
-            </div>
-          )}
-        </div>
+          <div className="h-full overflow-auto">
+            {comparison ? (
+              <ComparisonTable
+                result={comparison}
+                setupNames={setups.map((s) => s.name.split("/").pop() ?? s.name)}
+                onRemoveSetup={handleRemoveSetup}
+                onReorderSetup={handleReorderSetup}
+                diffsOnly={diffsOnly && setups.length > 1}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-xs uppercase tracking-wider text-text-muted">
+                  Check setups in the sidebar to compare
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
