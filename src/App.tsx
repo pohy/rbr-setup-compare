@@ -152,7 +152,17 @@ function App() {
   }, [rbr]);
 
   const handleRemoveSetup = useCallback((index: number) => {
-    setSetups((prev) => prev.filter((_, i) => i !== index));
+    setSetups((prev) => {
+      const removed = prev[index];
+      if (removed) {
+        setLoadedPaths((lp) => {
+          const next = new Set(lp);
+          if (next.delete(removed.name)) saveLoadedPaths(next);
+          return next;
+        });
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   }, []);
 
   const handleReorderSetup = useCallback(
@@ -247,7 +257,11 @@ function App() {
               </button>
             )}
             <button
-              onClick={() => setSetups([])}
+              onClick={() => {
+                setSetups([]);
+                setLoadedPaths(new Set());
+                saveLoadedPaths(new Set());
+              }}
               className="text-xs text-text-muted hover:text-text-secondary cursor-pointer uppercase tracking-wider"
             >
               Clear all
