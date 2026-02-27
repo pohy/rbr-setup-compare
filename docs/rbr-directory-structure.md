@@ -17,7 +17,7 @@ Richard Burns Rally/
 
 ## Setup File Locations
 
-Setups live in three places. The app scans all three when you open an RBR directory.
+Setups live in four places. The app scans all four when you open an RBR directory.
 
 ### 1. `rsfdata/cars/{CarName}/setups/` — Default setups
 
@@ -52,9 +52,19 @@ Physics/c_xsara/setups/
 └── d_snow.lsp
 ```
 
-### `SavedGames/{CarName}/` — Active setups
+### 4. `SavedGames/{CarName}/` — In-game edited setups
 
-What the game actually reads at runtime. Contains copies of default setups (prefixed with RSF car ID, e.g. `42_d_gravel.lsp`) and user-saved setups. Not scanned by the app — these are duplicates of files from the above locations.
+What the game actually reads at runtime. Contains copies of default setups (prefixed with RSF car ID, e.g. `42_d_gravel.lsp`) and user-saved setups edited in-game.
+
+```
+SavedGames/BMW_M3_E30_GrpA_ngp6/
+├── 42_d_gravel.lsp            # RSF default copy (filtered out)
+├── 42_d_tarmac.lsp            # RSF default copy (filtered out)
+├── tarmac-cubits-pohy-edit.lsp  # User-edited setup (scanned)
+└── gravel_custom_username.lsp   # User-edited setup (scanned)
+```
+
+The app filters out RSF default copies (files matching `^\d+_d_`) and only picks up user-edited setups.
 
 ## Car Physics Directory
 
@@ -207,11 +217,12 @@ RSFCarPhysics = "rsfdata\cars\Skoda_Fabia_S2000_Evo_2_ngp6"
 
 ## How the App Uses This
 
-The app ([`rbr-scanner.ts`](../src/lib/rbr-scanner.ts)) scans the three setup locations listed above. It:
+The app ([`rbr-scanner.ts`](../src/lib/rbr-scanner.ts)) scans the four setup locations listed above. It:
 
 1. Strips `_ngp6` suffix from directory names and replaces underscores with spaces for display
 2. Groups setups by car name
-3. Tags setups as `driver-setup` (from default `setups/` dirs) or `user-setup` (from `rsfdata/setups/`)
-4. Parses selected `.lsp` files using [`lsp-parser.ts`](../src/lib/lsp-parser.ts) (handles both format variants)
-5. Converts raw physics units to display units via [`sanitize.ts`](../src/lib/sanitize.ts) (e.g. N/m → kN/m, m → mm)
-6. Merges left/right wheel sections (LF+RF → Front, LB+RB → Back) since they're typically identical
+3. Tags setups as `driver-setup` (from default `setups/` dirs) or `user-setup` (from `rsfdata/setups/` and `SavedGames/`)
+4. Filters out RSF default copies from `SavedGames/` (files matching `^\d+_d_`)
+5. Parses selected `.lsp` files using [`lsp-parser.ts`](../src/lib/lsp-parser.ts) (handles both format variants)
+6. Converts raw physics units to display units via [`sanitize.ts`](../src/lib/sanitize.ts) (e.g. N/m → kN/m, m → mm)
+7. Merges left/right wheel sections (LF+RF → Front, LB+RB → Back) since they're typically identical

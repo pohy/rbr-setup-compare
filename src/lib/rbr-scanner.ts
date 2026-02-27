@@ -124,24 +124,90 @@ async function scanPhysics(root: FileSystemDirectoryHandle): Promise<ScannedSetu
   return results;
 }
 
+const RSF_DEFAULT_COPY_RE = /^\d+_d_/;
+
+async function scanSavedGames(root: FileSystemDirectoryHandle): Promise<ScannedSetup[]> {
+  const savedGames = await tryGetDirectory(root, "SavedGames");
+  if (!savedGames) return [];
+
+  const results: ScannedSetup[] = [];
+  for await (const [carDir, carHandle] of savedGames.entries()) {
+    if (carHandle.kind !== "directory") continue;
+    console.log(`[rbr-scan] SavedGames: checking car dir "${carDir}"`);
+    const carName = formatCarName(carDir);
+    const files = await collectLspFiles(
+      carHandle as FileSystemDirectoryHandle,
+      `SavedGames/${carDir}`,
+      carName,
+      "user-setup",
+    );
+    const filtered = files.filter((f) => !RSF_DEFAULT_COPY_RE.test(f.fileName));
+    console.log(
+      `[rbr-scan] SavedGames/${carDir}: found ${files.length} .lsp files, kept ${filtered.length} (filtered ${files.length - filtered.length} RSF defaults)`,
+    );
+    results.push(...filtered);
+  }
+  console.log(`[rbr-scan] scanSavedGames total: ${results.length}`);
+  return results;
+}
+
+async function deduplicateSetups(setups: ScannedSetup[]): Promise<ScannedSetup[]> {
+  const byKey = new Map<string, ScannedSetup[]>();
+  for (const setup of setups) {
+    const key = `${setup.carName}\0${setup.fileName}`;
+    const existing = byKey.get(key);
+    if (existing) {
+      existing.push(setup);
+    } else {
+      byKey.set(key, [setup]);
+    }
+  }
+
+  const results: ScannedSetup[] = [];
+  let removed = 0;
+  for (const group of byKey.values()) {
+    if (group.length === 1) {
+      results.push(group[0]);
+      continue;
+    }
+    const withTimestamps = await Promise.all(
+      group.map(async (setup) => {
+        const file = await setup.fileHandle.getFile();
+        return { setup, lastModified: file.lastModified };
+      }),
+    );
+    withTimestamps.sort((a, b) => b.lastModified - a.lastModified);
+    results.push(withTimestamps[0].setup);
+    removed += group.length - 1;
+  }
+
+  if (removed > 0) {
+    console.log(`[rbr-scan] Deduplicated: removed ${removed} duplicates`);
+  }
+  return results;
+}
+
 export async function scanRbrDirectory(root: FileSystemDirectoryHandle): Promise<CarGroup[]> {
-  const [rsfCars, rsfSetups, physics] = await Promise.all([
+  const [rsfCars, rsfSetups, physics, savedGames] = await Promise.all([
     scanRsfDataCars(root),
     scanRsfDataSetups(root),
     scanPhysics(root),
+    scanSavedGames(root),
   ]);
 
-  const all = [...rsfCars, ...rsfSetups, ...physics];
+  const all = [...rsfCars, ...rsfSetups, ...physics, ...savedGames];
   console.log(
-    `[rbr-scan] Scan complete — rsfCars: ${rsfCars.length}, rsfSetups: ${rsfSetups.length}, physics: ${physics.length}, total: ${all.length}`,
+    `[rbr-scan] Scan complete — rsfCars: ${rsfCars.length}, rsfSetups: ${rsfSetups.length}, physics: ${physics.length}, savedGames: ${savedGames.length}, total: ${all.length}`,
   );
   if (all.length === 0) {
     throw new Error("No RBR setup directories found.");
   }
 
+  const deduplicated = await deduplicateSetups(all);
+
   // Group by car name
   const grouped = new Map<string, ScannedSetup[]>();
-  for (const setup of all) {
+  for (const setup of deduplicated) {
     const existing = grouped.get(setup.carName);
     if (existing) {
       existing.push(setup);
