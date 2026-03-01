@@ -4,7 +4,7 @@ Compare Richard Burns Rally setup files side by side.
 
 ## [https://pohy.github.io/rbr-setup-compare](https://pohy.github.io/rbr-setup-compare)
 
-![](./docs/preview.webm)
+[preview.webm](https://github.com/user-attachments/assets/025880d4-5bfe-48c0-b8f5-9a29e349ef40)
 
 ## Features
 
