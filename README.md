@@ -18,3 +18,11 @@ Compare Richard Burns Rally setup files side by side.
 - **Collapsible sections** — expand or collapse setup sections individually
 - **Drag-to-reorder** — rearrange setup columns by dragging
 - **Setup management** — add, remove individual setups, or clear all at once
+
+## Credits
+
+- [pmfrlyn/RBRTools](https://github.com/pmfrlyn/RBRTools) — Python parser used as reference for the `.lsp` file format and parsing logic
+- [pshires/RbrSetupCompare](https://github.com/pshires/RbrSetupCompare) — Ruby app used as reference for unit conversions and value sanitization
+- [RBR Setup Studio](https://rbr-setup-studio.web.app/) — UI/UX reference for setup value display
+- [RallySimFans](https://rallysimfans.hu) — community platform whose directory structure conventions (`rsfdata/`, car naming, RSF IDs) the app supports
+- [NGP6 physics plugin](https://rallysimfans.hu) — defines the modern `.lsp` format variant and `_NGP` parameters
