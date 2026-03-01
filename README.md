@@ -4,6 +4,8 @@ Compare Richard Burns Rally setup files side by side.
 
 ## [https://pohy.github.io/rbr-setup-compare](https://pohy.github.io/rbr-setup-compare)
 
+![](./docs/preview.webm)
+
 ## Features
 
 - **Drag-and-drop import** — load `.lsp` setup files by dropping them onto the app or using a file picker
