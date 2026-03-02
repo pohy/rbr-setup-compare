@@ -106,22 +106,23 @@ Setup files use a Lisp-like S-expression format. There are two format variants t
 ```lisp
 (("CarSetup"
   Car
-  (":-D"
-   MaxSteeringLock            900
-   FrontRollBarStiffness      10000.0
-   RearRollBarStiffness       8000.0
+  ("Car"
+   MaxSteeringLock            0.75
+   FrontRollBarStiffness      16000
+   RearRollBarStiffness       18000
    )
   Drive
   (":-D"
-   FrontDiffMaxTorque         30.0
-   CenterDiffMaxTorque_NGP    600.0
-   RearDiffMaxTorque          200.0
-   FrontBrakePressure         3000000.0
-   RearBrakePressure          2700000.0
-   HandBrakePressure          5000000.0
-   ; ... gear IDs, bump stop params
+   FrontDiffMaxTorque         60.0
+   CenterDiffMaxTorque        0.0
+   RearDiffMaxTorque          120.0
+   MaxBrakePressureFront      4570000
+   MaxBrakePressureRear       2150000
+   HandbrakePercentage_NGP    0.63
+   GearId0                    1
+   ; ... more gear IDs, bump stop params
    )
-  ; ... more sections
+  ; ... Engine, VehicleControlUnit, Wheel*, SpringDamper*, Tyre* sections
 ))
 ```
 
@@ -144,7 +145,7 @@ Setup files use a Lisp-like S-expression format. There are two format variants t
 ))
 ```
 
-Key differences: root/section IDs are `(null)` instead of `CarSetup`/`:-D`, values are tab-separated, and keys within sections are alphabetically sorted.
+Key differences: root/section IDs are `(null)` instead of `CarSetup`/`"Car"`/`":-D"`, and keys within sections are alphabetically sorted.
 
 ### Sections in a setup file
 
@@ -164,25 +165,48 @@ Parameters added by the NGP physics plugin are suffixed with `_NGP` (e.g. `Cente
 
 ## Range Files
 
-Range files (`r_gravel.lsp`, etc.) define the valid adjustment ranges for the in-game setup screen:
+Range files (`r_gravel.lsp`, etc.) define the valid adjustment ranges for the in-game setup screen. Each tunable parameter has separate `Min`, `Max`, and `Step` entries. Sections are named `CarOptions`, `DriveOptions`, `SpringDamperOptionsLF`, etc.
 
 ```lisp
 (("(null)"
   CarOptions
   ("(null)"
-   MaxSteeringLock_range     540 1080 180    ; min max step
-   FrontRollBarStiffness_range  0.0 50000.0 1000.0
+   MaxSteeringLockRangeMax   0.751
+   MaxSteeringLockRangeMin   0.749
+   MaxSteeringLockRangeStep  0.010
+   FrontRollBarStiffnessMax  50000.0
+   FrontRollBarStiffnessMin  0.0
+   FrontRollBarStiffnessStep 200.0
+   ; ...
+   )
+  DriveOptions
+  ("(null)"
+   FrontBrakePressureMax     9000000.0
+   FrontBrakePressureMin     0.0
+   FrontBrakePressureStep    10000.0
+   FrontDiffTorqueMax        250.0
+   FrontDiffTorqueMin        0.0
+   FrontDiffTorqueStep       10.0
+   ; ...
    )
   SpringDamperOptionsLF
   ("(null)"
-   SpringLength_range        0.050 0.250 0.005
-   SpringStiffness_range     10000.0 80000.0 5000.0
-   BumpSlowDamping_range     1000.0 10000.0 500.0
+   SpringLengthMax           0.500
+   SpringLengthMin           0.010
+   SpringLengthStep          0.005
+   SpringStiffnessMax        100000.0
+   SpringStiffnessMin        15000.0
+   SpringStiffnessStep       100.0
+   DampBumpMin               1000.0
+   DampBumpMax               10000.0
+   DampBumpStep              10.0
+   ; ...
    )
+  ; ... SpringDamperOptionsRF/LB/RB, TyreOptionsLF/RF/LB/RB, WheelOptionsLF/RF/LB/RB
 ))
 ```
 
-Each `_range` key provides three values: minimum, maximum, and step size.
+The naming convention is inconsistent: some parameters use `*Range{Max,Min,Step}` (e.g. `MaxSteeringLockRangeMax`), while others use just `*{Max,Min,Step}` (e.g. `FrontRollBarStiffnessMax`, `DampBumpMin`).
 
 ## Vanilla Physics Cars
 

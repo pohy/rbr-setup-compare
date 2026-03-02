@@ -6,6 +6,7 @@ import { compareSetups } from "./lib/compare.ts";
 import { loadExampleSetups } from "./lib/example-setups.ts";
 import type { CarSetup } from "./lib/lsp-parser.ts";
 import type { ScannedSetup } from "./lib/rbr-scanner.ts";
+import { buildShareUrl, clearUrlHash, hydrateFromUrl } from "./lib/url-sharing.ts";
 import { useFilePicker } from "./lib/use-file-picker.ts";
 import { useRbrDirectory } from "./lib/use-rbr-directory.ts";
 
@@ -30,8 +31,14 @@ function readStoredPaths(): string[] {
 }
 
 function App() {
-  const [setups, setSetups] = useState<CarSetup[]>([]);
-  const [diffsOnly, setDiffsOnly] = useState(true);
+  const urlData = useRef(hydrateFromUrl());
+  const [setups, setSetups] = useState<CarSetup[]>(() =>
+    urlData.current.found ? urlData.current.setups : [],
+  );
+  const [diffsOnly, setDiffsOnly] = useState(() =>
+    urlData.current.found ? urlData.current.diffsOnly : true,
+  );
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
   // Track which relativePaths from the sidebar are currently loaded
   const [loadedPaths, _setLoadedPaths] = useState<Set<string>>(new Set());
   const setLoadedPaths = useCallback(
@@ -107,8 +114,14 @@ function App() {
     setSidebarDismissed(true);
   }, [rbr, loadedPaths, setLoadedPaths]);
 
+  // Strip hash after hydrating from URL
+  useEffect(() => {
+    if (urlData.current.found) clearUrlHash();
+  }, []);
+
   // Restore previously loaded setups after scan completes
   useEffect(() => {
+    if (urlData.current.found) return;
     if (hasRestoredRef.current || rbr.carGroups.length === 0) return;
     hasRestoredRef.current = true;
 
@@ -175,6 +188,26 @@ function App() {
       return next;
     });
   }, []);
+
+  const handleShare = useCallback(async () => {
+    const result = buildShareUrl(setups, diffsOnly);
+    if (!result.ok) {
+      setShareStatus(result.error);
+    } else {
+      try {
+        await navigator.clipboard.writeText(result.url);
+        const msg =
+          result.droppedKeys > 0
+            ? `Link copied! (${result.droppedKeys} params excluded)`
+            : "Link copied!";
+        setShareStatus(msg);
+      } catch {
+        setShareStatus("Failed to copy");
+      }
+    }
+    const id = setTimeout(() => setShareStatus(null), 3000);
+    return () => clearTimeout(id);
+  }, [setups, diffsOnly]);
 
   const comparison = setups.length >= 1 ? compareSetups(setups) : null;
   const showSidebar = rbr.carGroups.length > 0 && !sidebarDismissed;
@@ -259,12 +292,30 @@ function App() {
             <button
               type="button"
               onClick={() => {
+                if (!confirm("Remove all loaded setups?")) return;
                 setSetups([]);
                 setLoadedPaths(new Set());
               }}
               className="text-xs text-text-muted hover:text-text-secondary cursor-pointer uppercase tracking-wider"
             >
               Clear all
+            </button>
+            <button
+              type="button"
+              onClick={handleShare}
+              disabled={setups.length === 0}
+              title="Copy a shareable link to this comparison"
+              className={`text-xs uppercase tracking-wider ${
+                setups.length === 0
+                  ? "text-text-muted/40 cursor-not-allowed"
+                  : shareStatus
+                    ? shareStatus.startsWith("Link")
+                      ? "text-diff-positive cursor-pointer"
+                      : "text-diff-negative cursor-pointer"
+                    : "text-blue-400 hover:text-blue-300 cursor-pointer"
+              }`}
+            >
+              {shareStatus ?? "Copy share link"}
             </button>
             <button
               type="button"

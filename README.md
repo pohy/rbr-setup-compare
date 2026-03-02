@@ -18,6 +18,7 @@ Compare Richard Burns Rally setup files side by side.
 - **Collapsible sections** — expand or collapse setup sections individually
 - **Drag-to-reorder** — rearrange setup columns by dragging
 - **Setup management** — add, remove individual setups, or clear all at once
+- **Shareable links** — copy a URL that encodes the current comparison, so others can open it without needing the original files
 
 ## Credits
 
