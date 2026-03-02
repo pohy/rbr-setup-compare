@@ -48,7 +48,7 @@ function sanitizeValue(key: string, value: number | string): number | string {
   return cleanNumber(value);
 }
 
-const SECTION_RENAMES: Record<string, string> = {
+export const SECTION_RENAMES: Record<string, string> = {
   SpringDamperLB: "SpringDamperBack",
   SpringDamperLF: "SpringDamperFront",
   TyreLB: "TyreBack",

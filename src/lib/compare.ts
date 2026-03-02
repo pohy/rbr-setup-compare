@@ -1,5 +1,33 @@
+import { SETUP_SCHEMA } from "../generated/setup-schema.ts";
 import type { CarSetup } from "./lsp-parser.ts";
-import { getUnit } from "./sanitize.ts";
+import { getUnit, SECTION_RENAMES, sanitizeSetup } from "./sanitize.ts";
+
+// Build canonical order lookups from SETUP_SCHEMA using sanitized section names
+const SECTION_ORDER = new Map<string, number>();
+const SECTION_KEY_ORDER = new Map<string, Map<string, number>>();
+
+for (let i = 0; i < SETUP_SCHEMA.length; i++) {
+  const [rawSection, key] = SETUP_SCHEMA[i];
+  const section = SECTION_RENAMES[rawSection] ?? rawSection;
+
+  if (!SECTION_ORDER.has(section)) {
+    SECTION_ORDER.set(section, SECTION_ORDER.size);
+  }
+
+  let keyMap = SECTION_KEY_ORDER.get(section);
+  if (!keyMap) {
+    keyMap = new Map<string, number>();
+    SECTION_KEY_ORDER.set(section, keyMap);
+  }
+  if (!keyMap.has(key)) {
+    keyMap.set(key, keyMap.size);
+  }
+}
+
+function canonicalSort<T>(items: T[], orderMap: Map<T, number>): void {
+  const fallback = orderMap.size;
+  items.sort((a, b) => (orderMap.get(a) ?? fallback) - (orderMap.get(b) ?? fallback));
+}
 
 const TOLERANCE = 0.0001;
 
@@ -26,8 +54,10 @@ export type SectionComparison = {
 
 export type ComparisonResult = SectionComparison[];
 
-export function compareSetups(setups: CarSetup[]): ComparisonResult {
-  if (setups.length === 0) return [];
+export function compareSetups(rawSetups: CarSetup[]): ComparisonResult {
+  if (rawSetups.length === 0) return [];
+
+  const setups = rawSetups.map(sanitizeSetup);
 
   // Collect all section names in order of first appearance
   const sectionNames: string[] = [];
@@ -40,6 +70,8 @@ export function compareSetups(setups: CarSetup[]): ComparisonResult {
       }
     }
   }
+
+  canonicalSort(sectionNames, SECTION_ORDER);
 
   return sectionNames.map((sectionName) => {
     // Collect all keys in this section across all setups
@@ -55,6 +87,8 @@ export function compareSetups(setups: CarSetup[]): ComparisonResult {
         }
       }
     }
+
+    canonicalSort(keyOrder, SECTION_KEY_ORDER.get(sectionName) ?? new Map());
 
     const rows: ComparisonRow[] = keyOrder
       .map((key) => {
