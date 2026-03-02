@@ -214,11 +214,7 @@ function App() {
     } else {
       try {
         await navigator.clipboard.writeText(result.url);
-        const msg =
-          result.droppedKeys > 0
-            ? `Link copied! (${result.droppedKeys} params excluded)`
-            : "Link copied!";
-        setShareStatus(msg);
+        setShareStatus("Link copied!");
       } catch {
         setShareStatus("Failed to copy");
       }

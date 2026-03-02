@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { parseLspSetup } from "./src/lib/lsp-parser.ts";
+import { SECTION_DISCARD } from "./src/lib/sanitize.ts";
 
 const RBR_DIR = "/mnt/e/David/Games/Richard Burns Rally";
 
@@ -43,16 +44,6 @@ const seen = new Set<string>();
 const schema: [string, string][] = [];
 let parsed = 0;
 let failed = 0;
-
-// Right-side sections are always discarded by sanitizeSetup — skip them
-const SECTION_DISCARD = new Set([
-  "SpringDamperRB",
-  "SpringDamperRF",
-  "TyreRB",
-  "TyreRF",
-  "WheelRB",
-  "WheelRF",
-]);
 
 for (const file of files) {
   try {

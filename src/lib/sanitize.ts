@@ -57,14 +57,16 @@ export const SECTION_RENAMES: Record<string, string> = {
   WheelLF: "WheelFront",
 };
 
-const SECTION_DISCARD = new Set([
-  "SpringDamperRB",
-  "SpringDamperRF",
-  "TyreRB",
-  "TyreRF",
-  "WheelRB",
-  "WheelRF",
-]);
+export const SECTION_MIRRORS: Record<string, string> = {
+  SpringDamperLF: "SpringDamperRF",
+  SpringDamperLB: "SpringDamperRB",
+  TyreLF: "TyreRF",
+  TyreLB: "TyreRB",
+  WheelLF: "WheelRF",
+  WheelLB: "WheelRB",
+};
+
+export const SECTION_DISCARD = new Set(Object.values(SECTION_MIRRORS));
 
 export function sanitizeSetup(setup: CarSetup): CarSetup {
   const sections: CarSetup["sections"] = {};
@@ -89,6 +91,28 @@ export function sanitizeSetup(setup: CarSetup): CarSetup {
     const newName = SECTION_RENAMES[sectionName] ?? sectionName;
 
     sections[newName] = { id: section.id, values };
+  }
+
+  return { name: setup.name, sections };
+}
+
+export function restoreMirroredSections(setup: CarSetup): CarSetup {
+  const sections = { ...setup.sections };
+
+  // Restore Engine section with Features_NGP (required by RBR, always 0)
+  if (!sections.Engine) {
+    sections.Engine = { id: ":-D", values: { Features_NGP: 0 } };
+  }
+
+  for (const [left, right] of Object.entries(SECTION_MIRRORS)) {
+    if (sections[left] && !sections[right]) {
+      const src = sections[left];
+      sections[right] = {
+        id: src.id,
+        values: { ...src.values },
+        ...(src.rawValues ? { rawValues: { ...src.rawValues } } : {}),
+      };
+    }
   }
 
   return { name: setup.name, sections };

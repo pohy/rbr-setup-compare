@@ -72,7 +72,8 @@ describe("setupToLsp", () => {
       const lines = output.split("\n");
       const sectionLines = lines.filter((l) => /^\s{2}\w/.test(l)).map((l) => l.trim());
 
-      expect(sectionLines).toEqual(["Car", "Drive", "WheelLF", "TyreRB"]);
+      // Engine is always restored; WheelRF is restored from WheelLF by restoreMirroredSections
+      expect(sectionLines).toEqual(["Car", "Drive", "Engine", "WheelLF", "WheelRF", "TyreRB"]);
     });
 
     it("appends unknown sections at the end", () => {
@@ -87,7 +88,7 @@ describe("setupToLsp", () => {
       const lines = output.split("\n");
       const sectionLines = lines.filter((l) => /^\s{2}\w/.test(l)).map((l) => l.trim());
 
-      expect(sectionLines).toEqual(["Car", "CustomSection"]);
+      expect(sectionLines).toEqual(["Car", "Engine", "CustomSection"]);
     });
   });
 
@@ -191,7 +192,7 @@ describe("setupToLsp", () => {
       };
       const output = setupToLsp(setup);
       const reparsed = parseLspSetup(output, "test");
-      expect(Object.keys(reparsed.sections)).toEqual(["Car"]);
+      expect(Object.keys(reparsed.sections).sort()).toEqual(["Car", "Engine"]);
       expect(reparsed.sections.Car.values.MaxSteeringLock).toBe(0.75);
     });
 
@@ -221,9 +222,149 @@ describe("setupToLsp", () => {
       const lines = output.split("\n");
       const sectionLines = lines.filter((l) => /^\s{2}\w/.test(l)).map((l) => l.trim());
 
-      // Car first (canonical), then custom sections in insertion order
+      // Car first (canonical), Engine restored, then custom sections
       expect(sectionLines[0]).toBe("Car");
-      expect(sectionLines.slice(1).sort()).toEqual(["AnotherCustom", "ExtraStuff"].sort());
+      expect(sectionLines.slice(1).sort()).toEqual(["AnotherCustom", "Engine", "ExtraStuff"]);
+    });
+  });
+
+  describe("mirrored section restoration", () => {
+    it("restores RF/RB sections from LF/LB-only setup", () => {
+      const setup: CarSetup = {
+        name: "url-hydrated",
+        sections: {
+          Car: { id: "Car", values: { MaxSteeringLock: 0.75 } },
+          SpringDamperLF: {
+            id: ":-D",
+            values: { SpringStiffness: 50000 },
+            rawValues: { SpringStiffness: "50000" },
+          },
+          SpringDamperLB: { id: ":-D", values: { SpringStiffness: 40000 } },
+          TyreLF: { id: ":-D", values: { Pressure: 200000 } },
+          TyreLB: { id: ":-D", values: { Pressure: 180000 } },
+          WheelLF: { id: ":-D", values: { TopMountSlot: 3 } },
+          WheelLB: { id: ":-D", values: { TopMountSlot: 2 } },
+        },
+      };
+      const output = setupToLsp(setup);
+      const reparsed = parseLspSetup(output, "test");
+
+      // RF/RB sections should exist with same values as LF/LB
+      expect(reparsed.sections.SpringDamperRF.values).toEqual({ SpringStiffness: 50000 });
+      expect(reparsed.sections.SpringDamperRB.values).toEqual({ SpringStiffness: 40000 });
+      expect(reparsed.sections.TyreRF.values).toEqual({ Pressure: 200000 });
+      expect(reparsed.sections.TyreRB.values).toEqual({ Pressure: 180000 });
+      expect(reparsed.sections.WheelRF.values).toEqual({ TopMountSlot: 3 });
+      expect(reparsed.sections.WheelRB.values).toEqual({ TopMountSlot: 2 });
+    });
+
+    it("does not overwrite existing RF/RB sections", () => {
+      const setup: CarSetup = {
+        name: "full-setup",
+        sections: {
+          WheelLF: { id: ":-D", values: { TopMountSlot: 3 } },
+          WheelRF: { id: "custom", values: { TopMountSlot: 5 } },
+        },
+      };
+      const output = setupToLsp(setup);
+      const reparsed = parseLspSetup(output, "test");
+
+      expect(reparsed.sections.WheelRF.values.TopMountSlot).toBe(5);
+      expect(reparsed.sections.WheelRF.id).toBe("custom");
+    });
+  });
+
+  describe("canonical key ordering", () => {
+    function extractSectionKeys(output: string, sectionName: string): string[] {
+      const lines = output.split("\n");
+      const keys: string[] = [];
+      let inSection = false;
+      for (const line of lines) {
+        if (new RegExp(`^\\s{2}${sectionName}$`).test(line)) {
+          inSection = true;
+          continue;
+        }
+        if (inSection && /^\s{2}\w/.test(line)) break; // next section
+        if (inSection && /^\s{3}\w/.test(line)) {
+          keys.push(line.trim().split(/\t/)[0]);
+        }
+      }
+      return keys;
+    }
+
+    it("sorts keys within a section by SETUP_SCHEMA order", () => {
+      const setup: CarSetup = {
+        name: "test",
+        sections: {
+          SpringDamperLF: {
+            id: ":-D",
+            values: {
+              // Deliberately reversed vs schema order (SpringLength, SpringStiffness, ...)
+              DampingRebound: 3000,
+              SpringStiffness: 50000,
+              SpringLength: 0.22,
+            },
+          },
+        },
+      };
+      const output = setupToLsp(setup);
+      const keyLines = extractSectionKeys(output, "SpringDamperLF");
+
+      expect(keyLines).toEqual(["SpringLength", "SpringStiffness", "DampingRebound"]);
+    });
+
+    it("puts non-schema keys at the end in insertion order", () => {
+      const setup: CarSetup = {
+        name: "test",
+        sections: {
+          SpringDamperLF: {
+            id: ":-D",
+            values: {
+              CustomKey: 999,
+              SpringStiffness: 50000,
+              AnotherCustom: 123,
+              SpringLength: 0.22,
+            },
+          },
+        },
+      };
+      const output = setupToLsp(setup);
+      const keyLines = extractSectionKeys(output, "SpringDamperLF");
+
+      // Schema keys first in schema order, then custom keys in insertion order
+      expect(keyLines).toEqual(["SpringLength", "SpringStiffness", "CustomKey", "AnotherCustom"]);
+    });
+  });
+
+  describe("Engine section restoration", () => {
+    it("restores Engine section with Features_NGP when missing", () => {
+      const setup: CarSetup = {
+        name: "url-hydrated",
+        sections: {
+          Car: { id: "Car", values: { MaxSteeringLock: 0.75 } },
+          Drive: { id: ":-D", values: { FrontDiffMaxTorque: 90 } },
+        },
+      };
+      const output = setupToLsp(setup);
+      const reparsed = parseLspSetup(output, "test");
+
+      expect(reparsed.sections.Engine).toBeDefined();
+      expect(reparsed.sections.Engine.values.Features_NGP).toBe(0);
+    });
+
+    it("does not overwrite existing Engine section", () => {
+      const setup: CarSetup = {
+        name: "test",
+        sections: {
+          Car: { id: "Car", values: { MaxSteeringLock: 0.75 } },
+          Engine: { id: ":-D", values: { Features_NGP: 0, Dummy: 42 } },
+        },
+      };
+      const output = setupToLsp(setup);
+      const reparsed = parseLspSetup(output, "test");
+
+      expect(reparsed.sections.Engine.values.Dummy).toBe(42);
+      expect(reparsed.sections.Engine.values.Features_NGP).toBe(0);
     });
   });
 

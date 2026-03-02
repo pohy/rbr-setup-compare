@@ -1,4 +1,19 @@
+import { SETUP_SCHEMA } from "../generated/setup-schema.ts";
 import type { CarSetup } from "./lsp-parser.ts";
+import { restoreMirroredSections } from "./sanitize.ts";
+
+// Build per-section canonical key order from SETUP_SCHEMA
+const SECTION_KEY_ORDER = new Map<string, Map<string, number>>();
+for (const [section, key] of SETUP_SCHEMA) {
+  let keyMap = SECTION_KEY_ORDER.get(section);
+  if (!keyMap) {
+    keyMap = new Map<string, number>();
+    SECTION_KEY_ORDER.set(section, keyMap);
+  }
+  if (!keyMap.has(key)) {
+    keyMap.set(key, keyMap.size);
+  }
+}
 
 const SECTION_ORDER = [
   "Car",
@@ -40,6 +55,7 @@ function formatValue(value: number | string): string {
 }
 
 export function setupToLsp(setup: CarSetup): string {
+  setup = restoreMirroredSections(setup);
   const lines: string[] = ['(("CarSetup"'];
 
   // Emit sections in canonical order, then any remaining sections not in the order list
@@ -60,7 +76,14 @@ export function setupToLsp(setup: CarSetup): string {
     lines.push(`  ${name}`);
     lines.push(`  ("${id}"`);
 
-    for (const [key, val] of Object.entries(section.values)) {
+    const keyOrder = SECTION_KEY_ORDER.get(name);
+    const sortedEntries = Object.entries(section.values).sort(([a], [b]) => {
+      const ai = keyOrder?.get(a) ?? Infinity;
+      const bi = keyOrder?.get(b) ?? Infinity;
+      return ai - bi;
+    });
+
+    for (const [key, val] of sortedEntries) {
       const raw = section.rawValues?.[key];
       const formatted = raw ?? formatValue(val);
       lines.push(`   ${key}\t\t\t\t\t\t\t${formatted}`);
