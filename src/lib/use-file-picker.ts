@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import { type CarSetup, parseLspSetup } from "./lsp-parser.ts";
-import { sanitizeSetup } from "./sanitize.ts";
 
 export function useFilePicker(onFilesReady: (setups: CarSetup[]) => void) {
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +14,7 @@ export function useFilePicker(onFilesReady: (setups: CarSetup[]) => void) {
         try {
           const text = await file.text();
           const setup = parseLspSetup(text, file.name);
-          results.push(sanitizeSetup(setup));
+          results.push(setup);
         } catch (e) {
           setError(`Failed to parse ${file.name}: ${e instanceof Error ? e.message : String(e)}`);
           return;

@@ -5,6 +5,7 @@ import { SetupBrowser } from "./components/SetupBrowser.tsx";
 import { compareSetups } from "./lib/compare.ts";
 import { loadExampleSetups } from "./lib/example-setups.ts";
 import type { CarSetup } from "./lib/lsp-parser.ts";
+import { setupToLsp } from "./lib/lsp-writer.ts";
 import type { ScannedSetup } from "./lib/rbr-scanner.ts";
 import { buildShareUrl, clearUrlHash, hydrateFromUrl } from "./lib/url-sharing.ts";
 import { useFilePicker } from "./lib/use-file-picker.ts";
@@ -189,6 +190,23 @@ function App() {
     });
   }, []);
 
+  const handleSaveSetup = useCallback(
+    (index: number) => {
+      const setup = setups[index];
+      if (!setup) return;
+      const lspText = setupToLsp(setup);
+      const blob = new Blob([lspText], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const fileName = setup.name.split("/").pop() ?? setup.name;
+      a.download = fileName.endsWith(".lsp") ? fileName : `${fileName}.lsp`;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+    [setups],
+  );
+
   const handleShare = useCallback(async () => {
     const result = buildShareUrl(setups, diffsOnly);
     if (!result.ok) {
@@ -342,6 +360,7 @@ function App() {
                 result={comparison}
                 setupNames={setups.map((s) => s.name.split("/").pop() ?? s.name)}
                 onRemoveSetup={handleRemoveSetup}
+                onSaveSetup={handleSaveSetup}
                 onReorderSetup={handleReorderSetup}
                 diffsOnly={diffsOnly && setups.length > 1}
               />

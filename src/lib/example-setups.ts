@@ -3,7 +3,6 @@ import dSnowRaw from "../../data/Skoda_Fabia_S2000_Evo_2_ngp6/setups/d_snow.lsp?
 
 import dTarmacRaw from "../../data/Skoda_Fabia_S2000_Evo_2_ngp6/setups/d_tarmac.lsp?raw";
 import { type CarSetup, parseLspSetup } from "./lsp-parser.ts";
-import { sanitizeSetup } from "./sanitize.ts";
 
 const EXAMPLE_FILES: { name: string; content: string }[] = [
   { name: "d_tarmac.lsp", content: dTarmacRaw },
@@ -12,5 +11,5 @@ const EXAMPLE_FILES: { name: string; content: string }[] = [
 ];
 
 export function loadExampleSetups(): CarSetup[] {
-  return EXAMPLE_FILES.map(({ name, content }) => sanitizeSetup(parseLspSetup(content, name)));
+  return EXAMPLE_FILES.map(({ name, content }) => parseLspSetup(content, name));
 }

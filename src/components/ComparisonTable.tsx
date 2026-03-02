@@ -6,6 +6,7 @@ type Props = {
   result: ComparisonResult;
   setupNames: string[];
   onRemoveSetup: (index: number) => void;
+  onSaveSetup: (index: number) => void;
   onReorderSetup: (from: number, to: number) => void;
   diffsOnly: boolean;
 };
@@ -14,6 +15,7 @@ export function ComparisonTable({
   result,
   setupNames,
   onRemoveSetup,
+  onSaveSetup,
   onReorderSetup,
   diffsOnly,
 }: Props) {
@@ -132,13 +134,22 @@ export function ComparisonTable({
                 <span className="truncate text-text-primary" title={name}>
                   {name.replace(/\.lsp$/, "")}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => onRemoveSetup(i)}
-                  className="text-xs text-text-muted hover:text-diff-negative shrink-0 cursor-pointer"
-                >
-                  remove
-                </button>
+                <span className="flex gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => onSaveSetup(i)}
+                    className="text-xs text-text-muted hover:text-accent cursor-pointer"
+                  >
+                    save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveSetup(i)}
+                    className="text-xs text-text-muted hover:text-diff-negative cursor-pointer"
+                  >
+                    remove
+                  </button>
+                </span>
               </div>
             </div>
           ))}

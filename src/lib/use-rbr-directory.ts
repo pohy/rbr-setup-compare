@@ -13,7 +13,6 @@ import {
 } from "./fs-access.ts";
 import { type CarSetup, parseLspSetup } from "./lsp-parser.ts";
 import { type CarGroup, type ScannedSetup, scanRbrDirectory } from "./rbr-scanner.ts";
-import { sanitizeSetup } from "./sanitize.ts";
 
 export type { CarGroup, ScannedSetup };
 
@@ -98,7 +97,7 @@ export function useRbrDirectory() {
     for (const item of selected) {
       const text = await readFileHandle(item.fileHandle);
       const setup = parseLspSetup(text, item.fileName);
-      results.push(sanitizeSetup(setup));
+      results.push(setup);
     }
     return results;
   }, []);

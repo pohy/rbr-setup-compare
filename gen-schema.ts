@@ -1,7 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { parseLspSetup } from "./src/lib/lsp-parser.ts";
-import { sanitizeSetup } from "./src/lib/sanitize.ts";
 
 const RBR_DIR = "/mnt/e/David/Games/Richard Burns Rally";
 
@@ -45,12 +44,29 @@ const schema: [string, string][] = [];
 let parsed = 0;
 let failed = 0;
 
+// Right-side sections are always discarded by sanitizeSetup — skip them
+const SECTION_DISCARD = new Set([
+  "SpringDamperRB",
+  "SpringDamperRF",
+  "TyreRB",
+  "TyreRF",
+  "WheelRB",
+  "WheelRF",
+]);
+
 for (const file of files) {
   try {
     const content = readFileSync(file, "utf-8");
     const setup = parseLspSetup(content, file);
-    const sanitized = sanitizeSetup(setup);
-    for (const [sectionName, section] of Object.entries(sanitized.sections)) {
+    for (const [sectionName, section] of Object.entries(setup.sections)) {
+      if (SECTION_DISCARD.has(sectionName)) continue;
+
+      // Skip Engine section if it only has Features_NGP
+      if (sectionName === "Engine") {
+        const keys = Object.keys(section.values);
+        if (keys.length === 1 && keys[0] === "Features_NGP") continue;
+      }
+
       for (const key of Object.keys(section.values)) {
         const composite = `${sectionName}.${key}`;
         if (!seen.has(composite)) {
@@ -69,8 +85,12 @@ for (const file of files) {
 console.error(`Parsed ${parsed} files (${failed} failures), found ${schema.length} unique keys`);
 
 console.log(`// Generated from ${parsed} setup files (${schema.length} entries)`);
+console.log("// Schema version 1 — if this list changes, bump the version in url-sharing.ts");
+console.log("// Regenerate with: pnpm dlx tsx gen-schema.ts");
 console.log("export const SETUP_SCHEMA: [string, string][] = [");
 for (const [section, key] of schema) {
   console.log(`  ["${section}", "${key}"],`);
 }
 console.log("];");
+console.log("");
+console.log("export const SCHEMA_KEYS = new Set(SETUP_SCHEMA.map(([s, k]) => `${s}.${k}`));");
