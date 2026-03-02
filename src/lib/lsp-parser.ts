@@ -1,6 +1,7 @@
 export type SetupSection = {
   id: string;
   values: Record<string, number | string>;
+  rawValues?: Record<string, string>;
 };
 
 export type CarSetup = {
@@ -10,7 +11,7 @@ export type CarSetup = {
 
 type Token = string;
 
-function tokenize(text: string): Token[] {
+export function tokenize(text: string): Token[] {
   const stripped = text.replace(/;[^\n]*/g, "");
   const tokens: Token[] = [];
   let i = 0;
@@ -73,6 +74,7 @@ export function parseLspSetup(text: string, name: string): CarSetup {
   // parentSectionId is used to derive position suffixes for nested sections.
   function parseKeyValues(sectionName: string, sectionId: string) {
     const values: Record<string, number | string> = {};
+    const rawValues: Record<string, string> = {};
 
     while (peek() !== ")" && pos < tokens.length) {
       const tok = peek();
@@ -99,13 +101,15 @@ export function parseLspSetup(text: string, name: string): CarSetup {
 
       if (nums.length === 1) {
         values[tok] = parseFloat(nums[0]);
+        rawValues[tok] = nums[0];
       } else if (nums.length > 1) {
         values[tok] = nums.map((n) => parseFloat(n).toString()).join(" ");
+        rawValues[tok] = nums.join(" ");
       }
     }
 
     if (Object.keys(values).length > 0) {
-      sections[sectionName] = { id: sectionId, values };
+      sections[sectionName] = { id: sectionId, values, rawValues };
     }
   }
 
