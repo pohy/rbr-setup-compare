@@ -115,11 +115,6 @@ function App() {
     setSidebarDismissed(true);
   }, [rbr, loadedPaths, setLoadedPaths]);
 
-  // Strip hash after hydrating from URL
-  useEffect(() => {
-    if (urlData.current.found) clearUrlHash();
-  }, []);
-
   // Restore previously loaded setups after scan completes
   useEffect(() => {
     if (urlData.current.found) return;
@@ -309,6 +304,7 @@ function App() {
                 if (!confirm("Remove all loaded setups?")) return;
                 setSetups([]);
                 setLoadedPaths(new Set());
+                clearUrlHash();
               }}
               className="text-xs text-text-muted hover:text-text-secondary cursor-pointer uppercase tracking-wider"
             >
