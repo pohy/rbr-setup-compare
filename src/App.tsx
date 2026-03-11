@@ -115,16 +115,10 @@ function App() {
     setSidebarDismissed(true);
   }, [rbr, loadedPaths, setLoadedPaths]);
 
-  // Restore previously loaded setups after scan completes
-  useEffect(() => {
-    if (urlData.current.found) return;
-    if (hasRestoredRef.current || rbr.carGroups.length === 0) return;
-    hasRestoredRef.current = true;
-
+  const restoreFromLocalStorage = useCallback(async () => {
     const storedPaths = readStoredPaths();
-    if (storedPaths.length === 0) return;
+    if (storedPaths.length === 0 || rbr.carGroups.length === 0) return;
 
-    // Find matching ScannedSetup objects from the scan results
     const setupsByPath = new Map<string, ScannedSetup>();
     for (const group of rbr.carGroups) {
       for (const s of group.setups) {
@@ -141,23 +135,29 @@ function App() {
     const paths = toRestore.map((s) => s.relativePath);
     setLoadingPaths(new Set(paths));
 
-    (async () => {
-      const results: CarSetup[] = [];
-      const loaded = new Set<string>();
-      for (const setup of toRestore) {
-        try {
-          const [parsed] = await rbr.loadSetups([setup]);
-          results.push({ ...parsed, name: setup.relativePath });
-          loaded.add(setup.relativePath);
-        } catch (e) {
-          console.error(`[rbr-dir] Failed to restore ${setup.relativePath}:`, e);
-        }
+    const results: CarSetup[] = [];
+    const loaded = new Set<string>();
+    for (const setup of toRestore) {
+      try {
+        const [parsed] = await rbr.loadSetups([setup]);
+        results.push({ ...parsed, name: setup.relativePath });
+        loaded.add(setup.relativePath);
+      } catch (e) {
+        console.error(`[rbr-dir] Failed to restore ${setup.relativePath}:`, e);
       }
-      setSetups((prev) => [...prev, ...results]);
-      setLoadedPaths(loaded);
-      setLoadingPaths(new Set());
-    })();
+    }
+    setSetups((prev) => [...prev, ...results]);
+    setLoadedPaths(loaded);
+    setLoadingPaths(new Set());
   }, [rbr, setLoadedPaths]);
+
+  // Restore previously loaded setups after scan completes
+  useEffect(() => {
+    if (urlData.current.found) return;
+    if (hasRestoredRef.current || rbr.carGroups.length === 0) return;
+    hasRestoredRef.current = true;
+    restoreFromLocalStorage();
+  }, [rbr.carGroups.length, restoreFromLocalStorage]);
 
   const handleRemoveSetup = useCallback(
     (index: number) => {
@@ -301,14 +301,22 @@ function App() {
             <button
               type="button"
               onClick={() => {
-                if (!confirm("Remove all loaded setups?")) return;
-                setSetups([]);
-                setLoadedPaths(new Set());
-                clearUrlHash();
+                if (urlData.current.found) {
+                  setSetups([]);
+                  clearUrlHash();
+                  urlData.current.found = false;
+                  hasRestoredRef.current = true;
+                  restoreFromLocalStorage();
+                } else {
+                  if (!confirm("Remove all loaded setups?")) return;
+                  setSetups([]);
+                  setLoadedPaths(new Set());
+                  clearUrlHash();
+                }
               }}
               className="text-xs text-text-muted hover:text-text-secondary cursor-pointer uppercase tracking-wider"
             >
-              Clear all
+              {urlData.current.found ? "Dismiss shared" : "Clear all"}
             </button>
             <button
               type="button"
