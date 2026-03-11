@@ -304,7 +304,7 @@ function App() {
                 if (urlData.current.found) {
                   setSetups([]);
                   clearUrlHash();
-                  urlData.current.found = false;
+                  urlData.current = { found: false };
                   hasRestoredRef.current = true;
                   restoreFromLocalStorage();
                 } else {
