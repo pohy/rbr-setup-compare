@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { EditConfig } from "./components/ComparisonTable.tsx";
 import { ComparisonTable } from "./components/ComparisonTable.tsx";
 import { DropZone } from "./components/DropZone.tsx";
 import { SetupBrowser } from "./components/SetupBrowser.tsx";
@@ -7,11 +8,19 @@ import { loadExampleSetups } from "./lib/example-setups.ts";
 import type { CarSetup } from "./lib/lsp-parser.ts";
 import { setupToLsp } from "./lib/lsp-writer.ts";
 import type { ScannedSetup } from "./lib/rbr-scanner.ts";
+import { SECTION_RENAMES, unsanitizeValue } from "./lib/sanitize.ts";
 import { buildShareUrl, clearUrlHash, hydrateFromUrl } from "./lib/url-sharing.ts";
 import { useFilePicker } from "./lib/use-file-picker.ts";
 import { useRbrDirectory } from "./lib/use-rbr-directory.ts";
+import { useSetupEditor } from "./lib/use-setup-editor.ts";
 
 const STORAGE_KEY = "rbr-loaded-paths";
+
+// Reverse of SECTION_RENAMES: display name → raw name
+const SECTION_UNRENAMES: Record<string, string> = {};
+for (const [raw, display] of Object.entries(SECTION_RENAMES)) {
+  SECTION_UNRENAMES[display] = raw;
+}
 
 function saveLoadedPaths(paths: Set<string>) {
   try {
@@ -63,6 +72,8 @@ function App() {
 
   const rbr = useRbrDirectory();
   const [sidebarDismissed, setSidebarDismissed] = useState(false);
+
+  const editor = useSetupEditor();
 
   const handleLoadExample = useCallback(() => {
     setSetups(loadExampleSetups());
@@ -187,7 +198,9 @@ function App() {
 
   const handleSaveSetup = useCallback(
     (index: number) => {
-      const setup = setups[index];
+      const edited = editor.getEditedSetup();
+      const allSetups = edited ? [...setups, edited] : setups;
+      const setup = allSetups[index];
       if (!setup) return;
       const lspText = setupToLsp(setup);
       const blob = new Blob([lspText], { type: "text/plain" });
@@ -199,8 +212,54 @@ function App() {
       a.click();
       URL.revokeObjectURL(url);
     },
-    [setups],
+    [setups, editor],
   );
+
+  const handleStartEdit = useCallback(
+    (index: number) => {
+      if (editor.editState) {
+        const hasEdits = editor.editState.edits.size > 0;
+        if (hasEdits && !window.confirm("Discard current edits?")) {
+          return;
+        }
+      }
+      editor.startEdit(setups[index]);
+    },
+    [editor, setups],
+  );
+
+  const handleCellEdit = useCallback(
+    (displaySection: string, key: string, displayValue: string) => {
+      const num = parseFloat(displayValue);
+      if (Number.isNaN(num)) return;
+      const rawValue = unsanitizeValue(key, num);
+      // Reverse section rename: display name → raw name
+      const rawSection = SECTION_UNRENAMES[displaySection] ?? displaySection;
+      editor.updateValue(rawSection, key, rawValue);
+    },
+    [editor],
+  );
+
+  const handleToggleDiffMode = useCallback(() => {
+    if (!editor.editState) return;
+    editor.setDiffMode(
+      editor.editState.diffMode === "vs-reference" ? "vs-original" : "vs-reference",
+    );
+  }, [editor]);
+
+  const handleSaveEdit = useCallback(() => {
+    const edited = editor.getEditedSetup();
+    if (!edited) return;
+    const lspText = setupToLsp(edited);
+    const blob = new Blob([lspText], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const fileName = edited.name.split("/").pop() ?? edited.name;
+    a.download = fileName.endsWith(".lsp") ? fileName : `${fileName}.lsp`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [editor]);
 
   const handleShare = useCallback(async () => {
     const result = buildShareUrl(setups, diffsOnly);
@@ -218,7 +277,27 @@ function App() {
     return () => clearTimeout(id);
   }, [setups, diffsOnly]);
 
-  const comparison = setups.length >= 1 ? compareSetups(setups) : null;
+  // Build the comparison, including the edited setup as the last column if editing
+  const editedSetup = editor.getEditedSetup();
+  const setupsForComparison = editedSetup ? [...setups, editedSetup] : setups;
+  const comparison = setupsForComparison.length >= 1 ? compareSetups(setupsForComparison) : null;
+
+  const setupNames = setupsForComparison.map((s) => s.name.split("/").pop() ?? s.name);
+
+  // Build editConfig for ComparisonTable
+  const editConfig: EditConfig | undefined = editor.editState
+    ? {
+        columnIndex: setups.length, // always last column
+        sourceName: editor.editState.sourceName,
+        edits: editor.editState.edits,
+        diffMode: editor.editState.diffMode,
+        onCellEdit: handleCellEdit,
+        onToggleDiffMode: handleToggleDiffMode,
+        onDiscard: editor.discardEdit,
+        onSave: handleSaveEdit,
+      }
+    : undefined;
+
   const showSidebar = rbr.carGroups.length > 0 && !sidebarDismissed;
   const hasContent = setups.length > 0 || showSidebar;
 
@@ -358,11 +437,13 @@ function App() {
             {comparison ? (
               <ComparisonTable
                 result={comparison}
-                setupNames={setups.map((s) => s.name.split("/").pop() ?? s.name)}
+                setupNames={setupNames}
                 onRemoveSetup={handleRemoveSetup}
                 onSaveSetup={handleSaveSetup}
                 onReorderSetup={handleReorderSetup}
                 diffsOnly={diffsOnly && setups.length > 1}
+                editConfig={editConfig}
+                onStartEdit={handleStartEdit}
               />
             ) : (
               <div className="flex items-center justify-center h-full">
