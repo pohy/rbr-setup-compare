@@ -1,6 +1,20 @@
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComparisonResult } from "../lib/compare.ts";
+import type { DiffMode } from "../lib/use-setup-editor.ts";
+import { EditableCell } from "./EditableCell.tsx";
+import { EditColumnHeader } from "./EditColumnHeader.tsx";
+
+export type EditConfig = {
+  columnIndex: number;
+  sourceName: string;
+  edits: Map<string, Map<string, number | string>>;
+  diffMode: DiffMode;
+  onCellEdit: (section: string, key: string, displayValue: string) => void;
+  onToggleDiffMode: () => void;
+  onDiscard: () => void;
+  onSave: () => void;
+};
 
 type Props = {
   result: ComparisonResult;
@@ -9,6 +23,8 @@ type Props = {
   onSaveSetup: (index: number) => void;
   onReorderSetup: (from: number, to: number) => void;
   diffsOnly: boolean;
+  editConfig?: EditConfig;
+  onStartEdit?: (index: number) => void;
 };
 
 export function ComparisonTable({
@@ -18,6 +34,8 @@ export function ComparisonTable({
   onSaveSetup,
   onReorderSetup,
   diffsOnly,
+  editConfig,
+  onStartEdit,
 }: Props) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -70,6 +88,7 @@ export function ComparisonTable({
   );
 
   const colCount = setupNames.length + 1;
+  const isEditColumn = (i: number) => editConfig != null && i === editConfig.columnIndex;
 
   return (
     <div ref={containerRef} className="mx-auto w-fit">
@@ -93,66 +112,96 @@ export function ComparisonTable({
           >
             Parameter
           </div>
-          {setupNames.map((name, i) => (
-            <div
-              key={i}
-              role="columnheader"
-              tabIndex={0}
-              draggable
-              onDragStart={(e) => {
-                setDragIndex(i);
-                dragIndexRef.current = i;
-                e.dataTransfer.effectAllowed = "move";
+          {setupNames.map((name, i) => {
+            if (isEditColumn(i)) {
+              return (
+                <div
+                  key={i}
+                  role="columnheader"
+                  tabIndex={0}
+                  className="p-2 border border-border border-l-accent bg-accent/5 whitespace-nowrap"
+                >
+                  <EditColumnHeader
+                    name={name}
+                    diffMode={editConfig?.diffMode ?? "vs-reference"}
+                    onToggleDiffMode={editConfig?.onToggleDiffMode ?? (() => {})}
+                    onDiscard={editConfig?.onDiscard ?? (() => {})}
+                    onSave={editConfig?.onSave ?? (() => {})}
+                  />
+                </div>
+              );
+            }
 
-                const container = containerRef.current;
-                if (container) {
-                  const ghost = document.createElement("div");
-                  ghost.className = "text-sm";
-                  for (const cell of container.querySelectorAll(`[data-col="${i}"]`)) {
-                    ghost.appendChild(cell.cloneNode(true));
+            return (
+              <div
+                key={i}
+                role="columnheader"
+                tabIndex={0}
+                draggable
+                onDragStart={(e) => {
+                  setDragIndex(i);
+                  dragIndexRef.current = i;
+                  e.dataTransfer.effectAllowed = "move";
+
+                  const container = containerRef.current;
+                  if (container) {
+                    const ghost = document.createElement("div");
+                    ghost.className = "text-sm";
+                    for (const cell of container.querySelectorAll(`[data-col="${i}"]`)) {
+                      ghost.appendChild(cell.cloneNode(true));
+                    }
+                    ghost.style.position = "absolute";
+                    ghost.style.top = "-9999px";
+                    ghost.style.left = "-9999px";
+                    document.body.appendChild(ghost);
+                    ghostRef.current = ghost;
+
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    e.dataTransfer.setDragImage(ghost, e.clientX - rect.left, e.clientY - rect.top);
                   }
-                  ghost.style.position = "absolute";
-                  ghost.style.top = "-9999px";
-                  ghost.style.left = "-9999px";
-                  document.body.appendChild(ghost);
-                  ghostRef.current = ghost;
-
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  e.dataTransfer.setDragImage(ghost, e.clientX - rect.left, e.clientY - rect.top);
-                }
-              }}
-              onDragOver={(e) => handleDragOver(e, i)}
-              onDrop={handleDrop}
-              onDragEnd={clearDragState}
-              className={clsx(
-                "p-2 border border-border whitespace-nowrap cursor-grab",
-                i === 0 && "sticky left-[var(--param-w)] z-20 bg-elevated",
-                dragIndex !== null && dragIndex !== i && "opacity-50",
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-text-primary" title={name}>
-                  {name.replace(/\.lsp$/, "")}
-                </span>
-                <span className="flex gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => onSaveSetup(i)}
-                    className="text-xs text-text-muted hover:text-accent cursor-pointer"
-                  >
-                    save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveSetup(i)}
-                    className="text-xs text-text-muted hover:text-diff-negative cursor-pointer"
-                  >
-                    remove
-                  </button>
-                </span>
+                }}
+                onDragOver={(e) => handleDragOver(e, i)}
+                onDrop={handleDrop}
+                onDragEnd={clearDragState}
+                className={clsx(
+                  "p-2 border border-border whitespace-nowrap cursor-grab",
+                  i === 0 && "sticky left-[var(--param-w)] z-20 bg-elevated",
+                  dragIndex !== null && dragIndex !== i && "opacity-50",
+                )}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-text-primary" title={name}>
+                    {name.replace(/\.lsp$/, "")}
+                  </span>
+                  <span className="flex gap-2 shrink-0">
+                    {onStartEdit && (
+                      <button
+                        type="button"
+                        onClick={() => onStartEdit(i)}
+                        className="text-xs text-text-muted hover:text-accent cursor-pointer"
+                      >
+                        edit
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => onSaveSetup(i)}
+                      className="text-xs text-text-muted hover:text-accent cursor-pointer"
+                    >
+                      save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveSetup(i)}
+                      className="text-xs text-text-muted hover:text-diff-negative cursor-pointer"
+                    >
+                      remove
+                    </button>
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Sections */}
@@ -182,6 +231,7 @@ export function ComparisonTable({
               isCollapsed={collapsed[section.sectionName] ?? false}
               onToggle={() => toggleSection(section.sectionName)}
               dragIndex={dragIndex}
+              editConfig={editConfig}
             />
           );
         })}
@@ -197,6 +247,7 @@ function Section({
   isCollapsed,
   onToggle,
   dragIndex,
+  editConfig,
 }: {
   section: ComparisonResult[number];
   rows: ComparisonResult[number]["rows"];
@@ -204,6 +255,7 @@ function Section({
   isCollapsed: boolean;
   onToggle: () => void;
   dragIndex: number | null;
+  editConfig?: EditConfig;
 }) {
   const diffCount = section.rows.filter((r) => r.type === "data" && r.isDifferent).length;
 
@@ -220,7 +272,7 @@ function Section({
           if (e.key === "Enter" || e.key === " ") onToggle();
         }}
       >
-        <div className="sticky left-0 w-fit p-2 border-l-2 border-l-accent uppercase tracking-wider text-xs font-medium text-text-primary whitespace-nowrap">
+        <div className="sticky left-0 w-fit p-2 border-l-accent uppercase tracking-wider text-xs font-medium text-text-primary whitespace-nowrap">
           <span className="mr-2 inline-block w-4 text-center text-accent">
             {isCollapsed ? "+" : "\u2212"}
           </span>
@@ -269,7 +321,15 @@ function Section({
                     })
                     .replace(",", ".");
                 return row.values.map((val, i) => {
-                  const ref = row.values[0];
+                  const isEdit = editConfig != null && i === editConfig.columnIndex;
+
+                  // Determine the reference column for diff calculation
+                  let refIndex = 0;
+                  if (isEdit && editConfig?.diffMode === "vs-original") {
+                    refIndex = 0;
+                  }
+
+                  const ref = row.values[refIndex];
                   const numVal = val !== null ? Number(val) : NaN;
                   const numRef = ref !== null ? Number(ref) : NaN;
                   const bothNumeric = i > 0 && !Number.isNaN(numVal) && !Number.isNaN(numRef);
@@ -289,6 +349,39 @@ function Section({
                         maximumFractionDigits: decimals,
                       })
                       .replace(",", ".");
+
+                  // Check if this cell is edited
+                  const isEdited =
+                    isEdit && editConfig?.edits.get(section.sectionName)?.has(row.key) === true;
+
+                  if (isEdit) {
+                    return (
+                      <div
+                        key={i}
+                        data-col={i}
+                        className={clsx(
+                          "p-2 border border-l-accent bg-accent/5 whitespace-nowrap cursor-text",
+                          isEdited ? "border-accent/40" : "border-border",
+                          ratios && "relative",
+                          ratios && "z-[1]",
+                          cellDiffers && "bg-diff-bg",
+                        )}
+                      >
+                        <EditableCell
+                          value={val}
+                          unit={row.unit}
+                          onCommit={(displayValue) => {
+                            editConfig?.onCellEdit(section.sectionName, row.key, displayValue);
+                          }}
+                        />
+                        {ratios && (
+                          <span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-[3] bg-base px-1 text-[11px] leading-none text-text-muted whitespace-nowrap">
+                            {ratios[i] ?? "\u2014"}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  }
 
                   let cellColor = "text-text-primary";
                   let diffSpan: React.ReactNode = null;
