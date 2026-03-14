@@ -29,7 +29,15 @@ function umamiPlugin(): Plugin {
 
 export default defineConfig({
   base: "/rbr-setup-compare/",
-  plugins: [react(), tailwindcss(), umamiPlugin()],
+  plugins: [
+    react({
+      babel: {
+        plugins: ["babel-plugin-react-compiler"],
+      },
+    }),
+    tailwindcss(),
+    umamiPlugin(),
+  ],
   test: {
     setupFiles: ["./src/test-setup.ts"],
   },
