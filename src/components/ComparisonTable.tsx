@@ -7,6 +7,7 @@ import { getModifier, SECTION_RENAMES } from "../lib/sanitize.ts";
 import type { DiffMode } from "../lib/use-setup-editor.ts";
 import { EditableCell } from "./EditableCell.tsx";
 import { EditColumnHeader } from "./EditColumnHeader.tsx";
+import { PopoverMenu } from "./PopoverMenu.tsx";
 
 // Reverse of SECTION_RENAMES: display name → raw name
 const SECTION_UNRENAMES: Record<string, string> = {};
@@ -189,31 +190,21 @@ export function ComparisonTable({
                   <span className="truncate text-text-primary" title={name}>
                     {name.replace(/\.lsp$/, "")}
                   </span>
-                  <span className="flex gap-2 shrink-0">
+                  <PopoverMenu>
                     {onStartEdit && (
-                      <button
-                        type="button"
-                        onClick={() => onStartEdit(i)}
-                        className="text-xs text-text-muted hover:text-accent cursor-pointer"
-                      >
-                        edit
-                      </button>
+                      <>
+                        <PopoverMenu.Item onClick={() => onStartEdit(i)} variant="accent">
+                          Edit
+                        </PopoverMenu.Item>
+                        <PopoverMenu.Divider />
+                      </>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => onSaveSetup(i)}
-                      className="text-xs text-text-muted hover:text-accent cursor-pointer"
-                    >
-                      save
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onRemoveSetup(i)}
-                      className="text-xs text-text-muted hover:text-diff-negative cursor-pointer"
-                    >
-                      remove
-                    </button>
-                  </span>
+                    <PopoverMenu.Item onClick={() => onSaveSetup(i)}>Download</PopoverMenu.Item>
+                    <PopoverMenu.Divider />
+                    <PopoverMenu.Item onClick={() => onRemoveSetup(i)} variant="danger">
+                      Remove
+                    </PopoverMenu.Item>
+                  </PopoverMenu>
                 </div>
               </div>
             );

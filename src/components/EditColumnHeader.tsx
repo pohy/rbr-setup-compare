@@ -1,4 +1,5 @@
 import type { DiffMode } from "../lib/use-setup-editor.ts";
+import { PopoverMenu } from "./PopoverMenu.tsx";
 
 type Props = {
   name: string;
@@ -17,34 +18,19 @@ export function EditColumnHeader({ name, diffMode, onToggleDiffMode, onDiscard, 
         </span>
         <span className="text-accent text-[10px] uppercase tracking-wider shrink-0">(editing)</span>
       </div>
-      <span className="flex gap-2 shrink-0">
-        <button
-          type="button"
-          onClick={onToggleDiffMode}
-          className="text-xs text-text-muted hover:text-text-secondary cursor-pointer"
-          title={
-            diffMode === "vs-reference"
-              ? "Comparing vs reference (column 1)"
-              : "Comparing vs original"
-          }
-        >
-          {diffMode === "vs-reference" ? "vs ref" : "vs orig"}
-        </button>
-        <button
-          type="button"
-          onClick={onSave}
-          className="text-xs text-text-muted hover:text-accent cursor-pointer"
-        >
-          save
-        </button>
-        <button
-          type="button"
-          onClick={onDiscard}
-          className="text-xs text-text-muted hover:text-diff-negative cursor-pointer"
-        >
-          discard
-        </button>
-      </span>
+      <PopoverMenu>
+        <PopoverMenu.Item onClick={onToggleDiffMode} keepOpen>
+          {diffMode === "vs-reference" ? "Compare vs original" : "Compare vs reference"}
+        </PopoverMenu.Item>
+        <PopoverMenu.Divider />
+        <PopoverMenu.Item onClick={onSave} variant="accent">
+          Download
+        </PopoverMenu.Item>
+        <PopoverMenu.Divider />
+        <PopoverMenu.Item onClick={onDiscard} variant="danger">
+          Discard edits
+        </PopoverMenu.Item>
+      </PopoverMenu>
     </div>
   );
 }
