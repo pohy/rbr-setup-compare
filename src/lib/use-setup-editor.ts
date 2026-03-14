@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import type { CarSetup } from "./lsp-parser.ts";
+import type { RangeTriplet } from "./range-parser.ts";
 
 export type DiffMode = "vs-reference" | "vs-original";
 
@@ -43,6 +44,23 @@ export function deriveEditedSetup(
   return clone;
 }
 
+export function clampToRange(value: number, range: RangeTriplet): number {
+  const clamped = Math.min(Math.max(value, range.min), range.max);
+  if (range.step === 0) return clamped;
+  return range.min + Math.round((clamped - range.min) / range.step) * range.step;
+}
+
+export function stepValue(
+  current: number,
+  direction: 1 | -1,
+  range: RangeTriplet,
+  fine: boolean,
+): number {
+  const delta = fine ? range.step / 10 : range.step;
+  const fineRange = fine ? { ...range, step: delta } : range;
+  return clampToRange(current + direction * delta, fineRange);
+}
+
 export function useSetupEditor() {
   const [editState, setEditState] = useState<EditState | null>(null);
 
@@ -51,7 +69,7 @@ export function useSetupEditor() {
       sourceName: setup.name,
       sourceSetup: deepCloneSetup(setup),
       edits: new Map(),
-      diffMode: "vs-reference",
+      diffMode: "vs-original",
     });
   }, []);
 
@@ -66,8 +84,46 @@ export function useSetupEditor() {
     });
   }, []);
 
+  const updateValueWith = useCallback(
+    (section: string, key: string, fn: (current: number) => number) => {
+      setEditState((prev) => {
+        if (!prev) return prev;
+        // Read current value: from edits first, then from source setup
+        const existing = prev.edits.get(section)?.get(key);
+        const source = prev.sourceSetup.sections[section]?.values[key];
+        const current = existing !== undefined ? Number(existing) : Number(source);
+        if (Number.isNaN(current)) return prev;
+
+        const newValue = fn(current);
+        const newEdits = new Map(prev.edits);
+        const sectionEdits = new Map(newEdits.get(section) ?? []);
+        sectionEdits.set(key, newValue);
+        newEdits.set(section, sectionEdits);
+        return { ...prev, edits: newEdits };
+      });
+    },
+    [],
+  );
+
   const setDiffMode = useCallback((mode: DiffMode) => {
     setEditState((prev) => (prev ? { ...prev, diffMode: mode } : prev));
+  }, []);
+
+  const resetValue = useCallback((section: string, key: string) => {
+    setEditState((prev) => {
+      if (!prev) return prev;
+      const sectionEdits = prev.edits.get(section);
+      if (!sectionEdits?.has(key)) return prev;
+      const newEdits = new Map(prev.edits);
+      const newSectionEdits = new Map(sectionEdits);
+      newSectionEdits.delete(key);
+      if (newSectionEdits.size === 0) {
+        newEdits.delete(section);
+      } else {
+        newEdits.set(section, newSectionEdits);
+      }
+      return { ...prev, edits: newEdits };
+    });
   }, []);
 
   const discardEdit = useCallback(() => {
@@ -83,6 +139,8 @@ export function useSetupEditor() {
     editState,
     startEdit,
     updateValue,
+    updateValueWith,
+    resetValue,
     setDiffMode,
     discardEdit,
     getEditedSetup,
