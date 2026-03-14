@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CarPicker } from "./components/CarPicker.tsx";
 import type { EditConfig } from "./components/ComparisonTable.tsx";
 import { ComparisonTable } from "./components/ComparisonTable.tsx";
 import { DropZone } from "./components/DropZone.tsx";
 import { SetupBrowser } from "./components/SetupBrowser.tsx";
+import { STATIC_RANGES } from "./generated/static-ranges.ts";
 import { compareSetups } from "./lib/compare.ts";
 import { loadExampleSetups } from "./lib/example-setups.ts";
 import { writeFileHandle } from "./lib/fs-access.ts";
@@ -11,10 +13,13 @@ import { setupToLsp } from "./lib/lsp-writer.ts";
 import { getRangeForKey, type RangeMap } from "./lib/range-mapping.ts";
 import type { ScannedSetup } from "./lib/rbr-scanner.ts";
 import { SECTION_RENAMES, unsanitizeValue } from "./lib/sanitize.ts";
+import { getCarNames, resolveStaticRanges } from "./lib/static-ranges.ts";
 import { buildShareUrl, clearUrlHash, hydrateFromUrl } from "./lib/url-sharing.ts";
 import { useFilePicker } from "./lib/use-file-picker.ts";
 import { inferSurface, useRbrDirectory } from "./lib/use-rbr-directory.ts";
 import { stepValue, useSetupEditor } from "./lib/use-setup-editor.ts";
+
+const STATIC_CAR_NAMES = getCarNames(STATIC_RANGES);
 
 const STORAGE_KEY = "rbr-loaded-paths";
 
@@ -77,6 +82,8 @@ function App() {
 
   const editor = useSetupEditor();
   const [editRanges, setEditRanges] = useState<RangeMap | null>(null);
+  // Non-null when user manually picked a car via CarPicker (static range fallback)
+  const [editCarName, setEditCarName] = useState<string | null>(null);
   // Track file handles for directory-loaded setups (keyed by setup name/path)
   const fileHandles = useRef(new Map<string, FileSystemFileHandle>());
 
@@ -238,6 +245,7 @@ function App() {
       const setup = setups[index];
       editor.startEdit(setup);
       setEditRanges(null);
+      setEditCarName(null);
 
       // Try to load range data for this setup
       const fileName = setup.name.split("/").pop() ?? setup.name;
@@ -249,7 +257,16 @@ function App() {
       if (!group) return;
 
       const ranges = await rbr.loadRanges(group.carName, surface);
-      setEditRanges(ranges);
+      if (ranges) {
+        setEditRanges(ranges);
+        return;
+      }
+
+      // FS API range loading failed — try static fallback for this car
+      const staticRanges = resolveStaticRanges(STATIC_RANGES, group.carName);
+      if (staticRanges) {
+        setEditRanges(staticRanges);
+      }
     },
     [editor, setups, rbr],
   );
@@ -357,6 +374,12 @@ function App() {
     [editor, rbr.handle],
   );
 
+  const handleCarSelect = useCallback((carName: string) => {
+    setEditCarName(carName);
+    const ranges = resolveStaticRanges(STATIC_RANGES, carName);
+    if (ranges) setEditRanges(ranges);
+  }, []);
+
   const handleShare = useCallback(async () => {
     const result = buildShareUrl(setups, diffsOnly);
     if (!result.ok) {
@@ -384,6 +407,7 @@ function App() {
   const handleDiscardEdit = useCallback(() => {
     editor.discardEdit();
     setEditRanges(null);
+    setEditCarName(null);
   }, [editor]);
 
   const editConfig: EditConfig | undefined = editor.editState
@@ -537,6 +561,17 @@ function App() {
             {error}
           </div>
         )}
+
+        {/* Car picker for static range fallback */}
+        {editConfig &&
+          (editCarName !== null || !editConfig.rangeMap) &&
+          STATIC_CAR_NAMES.length > 0 && (
+            <CarPicker
+              carNames={STATIC_CAR_NAMES}
+              selectedCar={editCarName}
+              onSelect={handleCarSelect}
+            />
+          )}
 
         {/* Table */}
         <div className="flex-1 min-h-0 p-4">
