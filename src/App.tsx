@@ -5,6 +5,7 @@ import { DropZone } from "./components/DropZone.tsx";
 import { SetupBrowser } from "./components/SetupBrowser.tsx";
 import { compareSetups } from "./lib/compare.ts";
 import { loadExampleSetups } from "./lib/example-setups.ts";
+import { writeFileHandle } from "./lib/fs-access.ts";
 import type { CarSetup } from "./lib/lsp-parser.ts";
 import { setupToLsp } from "./lib/lsp-writer.ts";
 import { getRangeForKey, type RangeMap } from "./lib/range-mapping.ts";
@@ -76,6 +77,8 @@ function App() {
 
   const editor = useSetupEditor();
   const [editRanges, setEditRanges] = useState<RangeMap | null>(null);
+  // Track file handles for directory-loaded setups (keyed by setup name/path)
+  const fileHandles = useRef(new Map<string, FileSystemFileHandle>());
 
   const handleLoadExample = useCallback(() => {
     setSetups(loadExampleSetups());
@@ -96,6 +99,7 @@ function App() {
       if (isLoaded) {
         // Remove
         setSetups((prev) => prev.filter((s) => s.name !== path));
+        fileHandles.current.delete(path);
         setLoadedPaths((prev) => {
           const next = new Set(prev);
           next.delete(path);
@@ -107,6 +111,7 @@ function App() {
         try {
           const [loaded] = await rbr.loadSetups([setup]);
           setSetups((prev) => [...prev, { ...loaded, name: path }]);
+          fileHandles.current.set(path, setup.fileHandle);
           setLoadedPaths((prev) => new Set(prev).add(path));
         } finally {
           setLoadingPaths((prev) => {
@@ -122,6 +127,9 @@ function App() {
 
   const handleDisconnect = useCallback(async () => {
     setSetups((prev) => prev.filter((s) => !loadedPaths.has(s.name)));
+    for (const path of loadedPaths) {
+      fileHandles.current.delete(path);
+    }
     setLoadedPaths(new Set());
     setLoadingPaths(new Set());
     await rbr.forgetDirectory();
@@ -155,6 +163,7 @@ function App() {
         const [parsed] = await rbr.loadSetups([setup]);
         results.push({ ...parsed, name: setup.relativePath });
         loaded.add(setup.relativePath);
+        fileHandles.current.set(setup.relativePath, setup.fileHandle);
       } catch (e) {
         console.error(`[rbr-dir] Failed to restore ${setup.relativePath}:`, e);
       }
@@ -177,6 +186,7 @@ function App() {
       setSetups((prev) => {
         const removed = prev[index];
         if (removed) {
+          fileHandles.current.delete(removed.name);
           setLoadedPaths((lp) => {
             const next = new Set(lp);
             next.delete(removed.name);
@@ -313,6 +323,40 @@ function App() {
     URL.revokeObjectURL(url);
   }, [editor]);
 
+  const handleOverwriteEdit = useCallback(
+    async (fileName: string) => {
+      const edited = editor.getEditedSetup();
+      if (!edited) return;
+      const sourceName = editor.editState?.sourceName ?? "";
+      const originalHandle = fileHandles.current.get(sourceName);
+      if (!originalHandle) return;
+
+      const lspText = setupToLsp(edited);
+      const originalFileName = sourceName.split("/").pop() ?? "";
+
+      try {
+        if (fileName === originalFileName) {
+          // Overwrite original
+          await writeFileHandle(originalHandle, lspText);
+        } else {
+          // Save as new file in the same directory
+          if (!rbr.handle) return;
+          const pathParts = sourceName.split("/");
+          pathParts.pop(); // remove filename
+          let dir: FileSystemDirectoryHandle = rbr.handle;
+          for (const part of pathParts) {
+            dir = await dir.getDirectoryHandle(part);
+          }
+          const newHandle = await dir.getFileHandle(fileName, { create: true });
+          await writeFileHandle(newHandle, lspText);
+        }
+      } catch (e) {
+        alert(e instanceof Error ? e.message : "Failed to write file");
+      }
+    },
+    [editor, rbr.handle],
+  );
+
   const handleShare = useCallback(async () => {
     const result = buildShareUrl(setups, diffsOnly);
     if (!result.ok) {
@@ -356,6 +400,8 @@ function App() {
         onToggleDiffMode: handleToggleDiffMode,
         onDiscard: handleDiscardEdit,
         onSave: handleSaveEdit,
+        canOverwrite: fileHandles.current.has(editor.editState?.sourceName ?? ""),
+        onOverwrite: handleOverwriteEdit,
       }
     : undefined;
 

@@ -28,6 +28,8 @@ export type EditConfig = {
   onToggleDiffMode: () => void;
   onDiscard: () => void;
   onSave: () => void;
+  canOverwrite: boolean;
+  onOverwrite: (fileName: string) => void;
 };
 
 type Props = {
@@ -143,6 +145,9 @@ export function ComparisonTable({
                     onToggleDiffMode={editConfig?.onToggleDiffMode ?? (() => {})}
                     onDiscard={editConfig?.onDiscard ?? (() => {})}
                     onSave={editConfig?.onSave ?? (() => {})}
+                    canOverwrite={editConfig?.canOverwrite ?? false}
+                    onOverwrite={editConfig?.onOverwrite ?? (() => {})}
+                    canToggleDiffMode={editConfig != null && editConfig.sourceIndex !== 0}
                   />
                 </div>
               );
@@ -186,26 +191,28 @@ export function ComparisonTable({
                   dragIndex !== null && dragIndex !== i && "opacity-50",
                 )}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-text-primary" title={name}>
-                    {name.replace(/\.lsp$/, "")}
-                  </span>
-                  <PopoverMenu>
-                    {onStartEdit && (
-                      <>
-                        <PopoverMenu.Item onClick={() => onStartEdit(i)} variant="accent">
-                          Edit
-                        </PopoverMenu.Item>
-                        <PopoverMenu.Divider />
-                      </>
-                    )}
-                    <PopoverMenu.Item onClick={() => onSaveSetup(i)}>Download</PopoverMenu.Item>
-                    <PopoverMenu.Divider />
-                    <PopoverMenu.Item onClick={() => onRemoveSetup(i)} variant="danger">
-                      Remove
-                    </PopoverMenu.Item>
-                  </PopoverMenu>
-                </div>
+                <PopoverMenu
+                  label={
+                    <span className="truncate text-text-primary" title={name}>
+                      {name.replace(/\.lsp$/, "")}
+                    </span>
+                  }
+                  className="flex items-center justify-between gap-2"
+                >
+                  {onStartEdit && (
+                    <>
+                      <PopoverMenu.Item onClick={() => onStartEdit(i)} variant="accent">
+                        Edit
+                      </PopoverMenu.Item>
+                      <PopoverMenu.Divider />
+                    </>
+                  )}
+                  <PopoverMenu.Item onClick={() => onSaveSetup(i)}>Download</PopoverMenu.Item>
+                  <PopoverMenu.Divider />
+                  <PopoverMenu.Item onClick={() => onRemoveSetup(i)} variant="danger">
+                    Remove
+                  </PopoverMenu.Item>
+                </PopoverMenu>
               </div>
             );
           })}

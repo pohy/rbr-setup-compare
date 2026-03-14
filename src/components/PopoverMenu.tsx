@@ -5,6 +5,7 @@ import {
   offset,
   safePolygon,
   shift,
+  size,
   useDismiss,
   useFloating,
   useHover,
@@ -23,9 +24,13 @@ export function usePopoverClose() {
 
 type Props = {
   children: ReactNode;
+  /** Content shown alongside the three-dots icon. When provided, the entire wrapper becomes the hover target. */
+  label?: ReactNode;
+  /** Class name for the wrapper div (only used when label is provided). */
+  className?: string;
 };
 
-export function PopoverMenu({ children }: Props) {
+export function PopoverMenu({ children, label, className }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
 
@@ -35,14 +40,22 @@ export function PopoverMenu({ children }: Props) {
       if (!open) setIsPinned(false);
       setIsOpen(open);
     },
-    middleware: [offset(4), flip(), shift({ padding: 8 })],
+    middleware: [
+      offset(4),
+      flip(),
+      shift({ padding: 8 }),
+      size({
+        apply({ rects, elements }) {
+          elements.floating.style.width = `${rects.reference.width}px`;
+        },
+      }),
+    ],
     whileElementsMounted: autoUpdate,
     placement: "bottom-end",
   });
 
   const hover = useHover(context, {
     enabled: !isPinned,
-    delay: { open: 75, close: 150 },
     handleClose: safePolygon(),
   });
   const dismiss = useDismiss(context);
@@ -65,6 +78,51 @@ export function PopoverMenu({ children }: Props) {
     setIsPinned(false);
   };
 
+  const dotsIcon = (
+    <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5" aria-hidden="true">
+      <circle cx="8" cy="3" r="1.5" />
+      <circle cx="8" cy="8" r="1.5" />
+      <circle cx="8" cy="13" r="1.5" />
+    </svg>
+  );
+
+  const floating = isOpen && (
+    <FloatingPortal>
+      <div
+        ref={refs.setFloating}
+        style={floatingStyles}
+        {...getFloatingProps()}
+        className="z-50 bg-elevated border border-border rounded shadow-lg py-0.5"
+      >
+        <PopoverContext value={close}>{children}</PopoverContext>
+      </div>
+    </FloatingPortal>
+  );
+
+  if (label != null) {
+    // Wrapper mode: entire div is the hover target, three-dots button handles click-to-pin
+    return (
+      <>
+        <div ref={refs.setReference} {...getReferenceProps()} className={className}>
+          {label}
+          <button
+            type="button"
+            onClick={handleTriggerClick}
+            className={clsx(
+              "flex items-center justify-center w-5 h-5 text-text-muted hover:text-text-primary cursor-pointer rounded shrink-0",
+              isOpen && "text-text-primary",
+            )}
+            title="Actions"
+          >
+            {dotsIcon}
+          </button>
+        </div>
+        {floating}
+      </>
+    );
+  }
+
+  // Standalone mode: three-dots button is the hover target
   return (
     <>
       <button
@@ -77,55 +135,39 @@ export function PopoverMenu({ children }: Props) {
         )}
         title="Actions"
       >
-        <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5" aria-hidden="true">
-          <circle cx="8" cy="3" r="1.5" />
-          <circle cx="8" cy="8" r="1.5" />
-          <circle cx="8" cy="13" r="1.5" />
-        </svg>
+        {dotsIcon}
       </button>
-      {isOpen && (
-        <FloatingPortal>
-          <div
-            ref={refs.setFloating}
-            style={floatingStyles}
-            {...getFloatingProps()}
-            className="z-50 bg-elevated border border-border rounded shadow-lg py-0.5"
-          >
-            <PopoverContext value={close}>{children}</PopoverContext>
-          </div>
-        </FloatingPortal>
-      )}
+      {floating}
     </>
   );
 }
 
-function Item({
-  onClick,
-  keepOpen,
-  variant,
-  children,
-}: {
-  onClick: () => void;
+type ItemProps = Omit<React.ComponentPropsWithoutRef<"button">, "type" | "className"> & {
   keepOpen?: boolean;
   variant?: "default" | "danger" | "accent";
-  children: ReactNode;
-}) {
+};
+
+function Item({ onClick, keepOpen, variant, disabled, children, ...rest }: ItemProps) {
   const close = use(PopoverContext);
   return (
     <button
       type="button"
-      onClick={() => {
-        onClick();
+      disabled={disabled}
+      onClick={(e) => {
+        onClick?.(e);
         if (!keepOpen) close?.();
       }}
       className={clsx(
-        "w-full text-left px-2 py-0.5 text-xs cursor-pointer whitespace-nowrap",
-        variant === "danger"
-          ? "text-text-muted hover:text-diff-negative"
-          : variant === "accent"
-            ? "text-text-muted hover:text-accent"
-            : "text-text-muted hover:text-text-secondary",
+        "w-full text-left px-2 py-0.5 text-xs whitespace-nowrap",
+        disabled
+          ? "text-text-muted/40 cursor-not-allowed"
+          : variant === "danger"
+            ? "text-text-muted hover:text-diff-negative cursor-pointer"
+            : variant === "accent"
+              ? "text-text-muted hover:text-accent cursor-pointer"
+              : "text-text-muted hover:text-text-secondary cursor-pointer",
       )}
+      {...rest}
     >
       {children}
     </button>
