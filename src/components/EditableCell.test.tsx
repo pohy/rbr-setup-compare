@@ -68,4 +68,14 @@ describe("EditableCell", () => {
     render(<EditableCell value={55} unit="kN/m" onCommit={() => {}} />);
     expect(screen.getByRole("button")).toHaveTextContent("55 kN/m");
   });
+
+  it("calls onReset when input is cleared and committed", () => {
+    const onReset = vi.fn();
+    render(<EditableCell value={50} unit="kN/m" onCommit={() => {}} onReset={onReset} />);
+    fireEvent.click(screen.getByRole("button"));
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onReset).toHaveBeenCalled();
+  });
 });

@@ -6,9 +6,15 @@ export type ScannedSetup = {
   fileHandle: FileSystemFileHandle;
 };
 
+export type RangeFileEntry = {
+  surface: string;
+  fileHandle: FileSystemFileHandle;
+};
+
 export type CarGroup = {
   carName: string;
   setups: ScannedSetup[];
+  rangeFiles: RangeFileEntry[];
 };
 
 function formatCarName(dirName: string): string {
@@ -27,6 +33,20 @@ async function tryGetDirectory(
     console.log(`[rbr-scan] Directory not found: ${name} (in ${parent.name})`);
     return null;
   }
+}
+
+const RANGE_FILE_RE = /^r_(.+)\.lsp$/;
+
+async function collectRangeFiles(dir: FileSystemDirectoryHandle): Promise<RangeFileEntry[]> {
+  const results: RangeFileEntry[] = [];
+  for await (const [name, handle] of dir.entries()) {
+    if (handle.kind !== "file") continue;
+    const match = name.match(RANGE_FILE_RE);
+    if (match) {
+      results.push({ surface: match[1], fileHandle: handle as FileSystemFileHandle });
+    }
+  }
+  return results;
 }
 
 async function collectLspFiles(
@@ -50,30 +70,44 @@ async function collectLspFiles(
   return results;
 }
 
-async function scanRsfDataCars(root: FileSystemDirectoryHandle): Promise<ScannedSetup[]> {
-  const rsfdata = await tryGetDirectory(root, "rsfdata");
-  if (!rsfdata) return [];
-  const cars = await tryGetDirectory(rsfdata, "cars");
-  if (!cars) return [];
+type ScanResult = {
+  setups: ScannedSetup[];
+  rangeFiles: Map<string, RangeFileEntry[]>; // keyed by carName
+};
 
-  const results: ScannedSetup[] = [];
+async function scanRsfDataCars(root: FileSystemDirectoryHandle): Promise<ScanResult> {
+  const rsfdata = await tryGetDirectory(root, "rsfdata");
+  if (!rsfdata) return { setups: [], rangeFiles: new Map() };
+  const cars = await tryGetDirectory(rsfdata, "cars");
+  if (!cars) return { setups: [], rangeFiles: new Map() };
+
+  const setups: ScannedSetup[] = [];
+  const rangeFiles = new Map<string, RangeFileEntry[]>();
   for await (const [carDir, carHandle] of cars.entries()) {
     if (carHandle.kind !== "directory") continue;
     console.log(`[rbr-scan] rsfdata/cars: checking car dir "${carDir}"`);
-    const setups = await tryGetDirectory(carHandle as FileSystemDirectoryHandle, "setups");
-    if (!setups) continue;
+    const carDirHandle = carHandle as FileSystemDirectoryHandle;
     const carName = formatCarName(carDir);
+
+    // Collect range files from car directory root
+    const ranges = await collectRangeFiles(carDirHandle);
+    if (ranges.length > 0) {
+      rangeFiles.set(carName, ranges);
+    }
+
+    const setupsDir = await tryGetDirectory(carDirHandle, "setups");
+    if (!setupsDir) continue;
     const files = await collectLspFiles(
-      setups,
+      setupsDir,
       `rsfdata/cars/${carDir}/setups`,
       carName,
       "driver-setup",
     );
     console.log(`[rbr-scan] rsfdata/cars/${carDir}/setups: found ${files.length} .lsp files`);
-    results.push(...files);
+    setups.push(...files);
   }
-  console.log(`[rbr-scan] scanRsfDataCars total: ${results.length}`);
-  return results;
+  console.log(`[rbr-scan] scanRsfDataCars total: ${setups.length}`);
+  return { setups, rangeFiles };
 }
 
 async function scanRsfDataSetups(root: FileSystemDirectoryHandle): Promise<ScannedSetup[]> {
@@ -100,28 +134,37 @@ async function scanRsfDataSetups(root: FileSystemDirectoryHandle): Promise<Scann
   return results;
 }
 
-async function scanPhysics(root: FileSystemDirectoryHandle): Promise<ScannedSetup[]> {
+async function scanPhysics(root: FileSystemDirectoryHandle): Promise<ScanResult> {
   const physics = await tryGetDirectory(root, "Physics");
-  if (!physics) return [];
+  if (!physics) return { setups: [], rangeFiles: new Map() };
 
-  const results: ScannedSetup[] = [];
+  const setups: ScannedSetup[] = [];
+  const rangeFiles = new Map<string, RangeFileEntry[]>();
   for await (const [carDir, carHandle] of physics.entries()) {
     if (carHandle.kind !== "directory") continue;
     console.log(`[rbr-scan] Physics: checking car dir "${carDir}"`);
-    const setups = await tryGetDirectory(carHandle as FileSystemDirectoryHandle, "setups");
-    if (!setups) continue;
+    const carDirHandle = carHandle as FileSystemDirectoryHandle;
     const carName = formatCarName(carDir);
+
+    // Collect range files from car directory root
+    const ranges = await collectRangeFiles(carDirHandle);
+    if (ranges.length > 0 && !rangeFiles.has(carName)) {
+      rangeFiles.set(carName, ranges);
+    }
+
+    const setupsDir = await tryGetDirectory(carDirHandle, "setups");
+    if (!setupsDir) continue;
     const files = await collectLspFiles(
-      setups,
+      setupsDir,
       `Physics/${carDir}/setups`,
       carName,
       "driver-setup",
     );
     console.log(`[rbr-scan] Physics/${carDir}/setups: found ${files.length} .lsp files`);
-    results.push(...files);
+    setups.push(...files);
   }
-  console.log(`[rbr-scan] scanPhysics total: ${results.length}`);
-  return results;
+  console.log(`[rbr-scan] scanPhysics total: ${setups.length}`);
+  return { setups, rangeFiles };
 }
 
 const RSF_DEFAULT_COPY_RE = /^\d+_d_/;
@@ -187,6 +230,30 @@ async function deduplicateSetups(setups: ScannedSetup[]): Promise<ScannedSetup[]
   return results;
 }
 
+function mergeRangeFiles(
+  ...sources: Map<string, RangeFileEntry[]>[]
+): Map<string, RangeFileEntry[]> {
+  const merged = new Map<string, RangeFileEntry[]>();
+  for (const source of sources) {
+    for (const [carName, entries] of source) {
+      const existing = merged.get(carName);
+      if (!existing) {
+        merged.set(carName, [...entries]);
+      } else {
+        // Dedup by surface, prefer earlier sources (rsfdata over Physics)
+        const surfaces = new Set(existing.map((e) => e.surface));
+        for (const entry of entries) {
+          if (!surfaces.has(entry.surface)) {
+            existing.push(entry);
+            surfaces.add(entry.surface);
+          }
+        }
+      }
+    }
+  }
+  return merged;
+}
+
 export async function scanRbrDirectory(root: FileSystemDirectoryHandle): Promise<CarGroup[]> {
   const [rsfCars, rsfSetups, physics, savedGames] = await Promise.all([
     scanRsfDataCars(root),
@@ -195,15 +262,18 @@ export async function scanRbrDirectory(root: FileSystemDirectoryHandle): Promise
     scanSavedGames(root),
   ]);
 
-  const all = [...rsfCars, ...rsfSetups, ...physics, ...savedGames];
+  const all = [...rsfCars.setups, ...rsfSetups, ...physics.setups, ...savedGames];
   console.log(
-    `[rbr-scan] Scan complete — rsfCars: ${rsfCars.length}, rsfSetups: ${rsfSetups.length}, physics: ${physics.length}, savedGames: ${savedGames.length}, total: ${all.length}`,
+    `[rbr-scan] Scan complete — rsfCars: ${rsfCars.setups.length}, rsfSetups: ${rsfSetups.length}, physics: ${physics.setups.length}, savedGames: ${savedGames.length}, total: ${all.length}`,
   );
   if (all.length === 0) {
     throw new Error("No RBR setup directories found.");
   }
 
   const deduplicated = await deduplicateSetups(all);
+
+  // Merge range files: prefer rsfdata over Physics
+  const allRangeFiles = mergeRangeFiles(rsfCars.rangeFiles, physics.rangeFiles);
 
   // Group by car name
   const grouped = new Map<string, ScannedSetup[]>();
@@ -222,6 +292,7 @@ export async function scanRbrDirectory(root: FileSystemDirectoryHandle): Promise
     .map(([carName, setups]) => ({
       carName,
       setups: setups.sort((a, b) => a.fileName.localeCompare(b.fileName)),
+      rangeFiles: allRangeFiles.get(carName) ?? [],
     }));
 
   return groups;

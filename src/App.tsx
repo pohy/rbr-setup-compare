@@ -7,12 +7,13 @@ import { compareSetups } from "./lib/compare.ts";
 import { loadExampleSetups } from "./lib/example-setups.ts";
 import type { CarSetup } from "./lib/lsp-parser.ts";
 import { setupToLsp } from "./lib/lsp-writer.ts";
+import { getRangeForKey, type RangeMap } from "./lib/range-mapping.ts";
 import type { ScannedSetup } from "./lib/rbr-scanner.ts";
 import { SECTION_RENAMES, unsanitizeValue } from "./lib/sanitize.ts";
 import { buildShareUrl, clearUrlHash, hydrateFromUrl } from "./lib/url-sharing.ts";
 import { useFilePicker } from "./lib/use-file-picker.ts";
-import { useRbrDirectory } from "./lib/use-rbr-directory.ts";
-import { useSetupEditor } from "./lib/use-setup-editor.ts";
+import { inferSurface, useRbrDirectory } from "./lib/use-rbr-directory.ts";
+import { stepValue, useSetupEditor } from "./lib/use-setup-editor.ts";
 
 const STORAGE_KEY = "rbr-loaded-paths";
 
@@ -74,6 +75,7 @@ function App() {
   const [sidebarDismissed, setSidebarDismissed] = useState(false);
 
   const editor = useSetupEditor();
+  const [editRanges, setEditRanges] = useState<RangeMap | null>(null);
 
   const handleLoadExample = useCallback(() => {
     setSetups(loadExampleSetups());
@@ -216,16 +218,58 @@ function App() {
   );
 
   const handleStartEdit = useCallback(
-    (index: number) => {
+    async (index: number) => {
       if (editor.editState) {
         const hasEdits = editor.editState.edits.size > 0;
         if (hasEdits && !window.confirm("Discard current edits?")) {
           return;
         }
       }
-      editor.startEdit(setups[index]);
+      const setup = setups[index];
+      editor.startEdit(setup);
+      setEditRanges(null);
+
+      // Try to load range data for this setup
+      const fileName = setup.name.split("/").pop() ?? setup.name;
+      const surface = inferSurface(fileName);
+      if (!surface) return;
+
+      // Find the car group that owns this setup path
+      const group = rbr.carGroups.find((g) => g.setups.some((s) => s.relativePath === setup.name));
+      if (!group) return;
+
+      const ranges = await rbr.loadRanges(group.carName, surface);
+      setEditRanges(ranges);
     },
-    [editor, setups],
+    [editor, setups, rbr],
+  );
+
+  const handleStep = useCallback(
+    (displaySection: string, key: string, direction: 1 | -1, fine: boolean) => {
+      const rawSection = SECTION_UNRENAMES[displaySection] ?? displaySection;
+      const range = editRanges ? getRangeForKey(editRanges, rawSection, key) : undefined;
+
+      editor.updateValueWith(rawSection, key, (currentRaw) => {
+        if (range) return stepValue(currentRaw, direction, range, fine);
+        // No range: derive step from max decimal precision across all setups
+        let maxDecimals = 0;
+        for (const s of setups) {
+          const v = s.sections[rawSection]?.values[key];
+          if (typeof v === "number") {
+            const str = String(v);
+            const d = str.includes(".") ? str.split(".")[1].length : 0;
+            if (d > maxDecimals) maxDecimals = d;
+          }
+        }
+        const step = 10 ** -maxDecimals;
+        const delta = fine ? step / 10 : step;
+        const raw = currentRaw + direction * delta;
+        // Round to step precision to avoid floating-point drift
+        const factor = 10 ** (maxDecimals + (fine ? 1 : 0));
+        return Math.round(raw * factor) / factor;
+      });
+    },
+    [editRanges, editor, setups],
   );
 
   const handleCellEdit = useCallback(
@@ -236,6 +280,14 @@ function App() {
       // Reverse section rename: display name → raw name
       const rawSection = SECTION_UNRENAMES[displaySection] ?? displaySection;
       editor.updateValue(rawSection, key, rawValue);
+    },
+    [editor],
+  );
+
+  const handleCellReset = useCallback(
+    (displaySection: string, key: string) => {
+      const rawSection = SECTION_UNRENAMES[displaySection] ?? displaySection;
+      editor.resetValue(rawSection, key);
     },
     [editor],
   );
@@ -285,15 +337,24 @@ function App() {
   const setupNames = setupsForComparison.map((s) => s.name.split("/").pop() ?? s.name);
 
   // Build editConfig for ComparisonTable
+  const handleDiscardEdit = useCallback(() => {
+    editor.discardEdit();
+    setEditRanges(null);
+  }, [editor]);
+
   const editConfig: EditConfig | undefined = editor.editState
     ? {
         columnIndex: setups.length, // always last column
+        sourceIndex: setups.findIndex((s) => s.name === editor.editState?.sourceName),
         sourceName: editor.editState.sourceName,
         edits: editor.editState.edits,
         diffMode: editor.editState.diffMode,
+        rangeMap: editRanges,
         onCellEdit: handleCellEdit,
+        onCellReset: handleCellReset,
+        onStep: handleStep,
         onToggleDiffMode: handleToggleDiffMode,
-        onDiscard: editor.discardEdit,
+        onDiscard: handleDiscardEdit,
         onSave: handleSaveEdit,
       }
     : undefined;

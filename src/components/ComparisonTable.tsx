@@ -1,16 +1,29 @@
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComparisonResult } from "../lib/compare.ts";
+import type { RangeMap } from "../lib/range-mapping.ts";
+import type { RangeTriplet } from "../lib/range-parser.ts";
+import { getModifier, SECTION_RENAMES } from "../lib/sanitize.ts";
 import type { DiffMode } from "../lib/use-setup-editor.ts";
 import { EditableCell } from "./EditableCell.tsx";
 import { EditColumnHeader } from "./EditColumnHeader.tsx";
 
+// Reverse of SECTION_RENAMES: display name → raw name
+const SECTION_UNRENAMES: Record<string, string> = {};
+for (const [raw, display] of Object.entries(SECTION_RENAMES)) {
+  SECTION_UNRENAMES[display] = raw;
+}
+
 export type EditConfig = {
   columnIndex: number;
+  sourceIndex: number;
   sourceName: string;
   edits: Map<string, Map<string, number | string>>;
   diffMode: DiffMode;
+  rangeMap: RangeMap | null;
   onCellEdit: (section: string, key: string, displayValue: string) => void;
+  onCellReset: (section: string, key: string) => void;
+  onStep: (section: string, key: string, direction: 1 | -1, fine: boolean) => void;
   onToggleDiffMode: () => void;
   onDiscard: () => void;
   onSave: () => void;
@@ -89,6 +102,8 @@ export function ComparisonTable({
 
   const colCount = setupNames.length + 1;
   const isEditColumn = (i: number) => editConfig != null && i === editConfig.columnIndex;
+  const diffRefIndex =
+    editConfig != null ? (editConfig.diffMode === "vs-original" ? editConfig.sourceIndex : 0) : -1;
 
   return (
     <div ref={containerRef} className="mx-auto w-fit">
@@ -164,7 +179,8 @@ export function ComparisonTable({
                 onDrop={handleDrop}
                 onDragEnd={clearDragState}
                 className={clsx(
-                  "p-2 border border-border whitespace-nowrap cursor-grab",
+                  "p-2 border whitespace-nowrap cursor-grab",
+                  i === diffRefIndex ? "border-accent/40 bg-accent/5" : "border-border",
                   i === 0 && "sticky left-[var(--param-w)] z-20 bg-elevated",
                   dragIndex !== null && dragIndex !== i && "opacity-50",
                 )}
@@ -308,7 +324,8 @@ function Section({
                 const unit = row.unit ? ` ${row.unit}` : "";
                 const maxDecimals = Math.max(
                   0,
-                  ...row.values.map((v) => {
+                  ...row.values.map((v, i) => {
+                    if (editConfig != null && i === editConfig.columnIndex) return 0;
                     const s = String(v);
                     return s.includes(".") ? s.split(".")[1].length : 0;
                   }),
@@ -326,7 +343,7 @@ function Section({
                   // Determine the reference column for diff calculation
                   let refIndex = 0;
                   if (isEdit && editConfig?.diffMode === "vs-original") {
-                    refIndex = 0;
+                    refIndex = editConfig.sourceIndex;
                   }
 
                   const ref = row.values[refIndex];
@@ -355,6 +372,34 @@ function Section({
                     isEdit && editConfig?.edits.get(section.sectionName)?.has(row.key) === true;
 
                   if (isEdit) {
+                    // Look up range for this row and convert to display units
+                    let displayRange: RangeTriplet | undefined;
+                    if (editConfig?.rangeMap) {
+                      const rawSection =
+                        SECTION_UNRENAMES[section.sectionName] ?? section.sectionName;
+                      const rawRange = editConfig.rangeMap.get(rawSection)?.get(row.key);
+                      if (rawRange) {
+                        const mod = getModifier(row.key);
+                        displayRange = {
+                          min: rawRange.min * mod,
+                          max: rawRange.max * mod,
+                          step: rawRange.step * mod,
+                        };
+                      }
+                    }
+
+                    let editDiffSpan: React.ReactNode = null;
+                    if (cellDiffers && bothNumeric && diff !== 0) {
+                      const cls = diff > 0 ? "text-diff-positive" : "text-diff-negative";
+                      editDiffSpan = (
+                        <span className={cls}>
+                          {" "}
+                          ({fmtDiff(diff)}
+                          {unit})
+                        </span>
+                      );
+                    }
+
                     return (
                       <div
                         key={i}
@@ -370,10 +415,19 @@ function Section({
                         <EditableCell
                           value={val}
                           unit={row.unit}
+                          range={displayRange}
                           onCommit={(displayValue) => {
                             editConfig?.onCellEdit(section.sectionName, row.key, displayValue);
                           }}
-                        />
+                          onReset={() => {
+                            editConfig?.onCellReset(section.sectionName, row.key);
+                          }}
+                          onStep={(direction, fine) =>
+                            editConfig?.onStep(section.sectionName, row.key, direction, fine)
+                          }
+                        >
+                          {editDiffSpan}
+                        </EditableCell>
                         {ratios && (
                           <span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-[3] bg-base px-1 text-[11px] leading-none text-text-muted whitespace-nowrap">
                             {ratios[i] ?? "\u2014"}
