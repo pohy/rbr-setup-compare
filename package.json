@@ -14,6 +14,7 @@
     "gen-schema": "pnpm dlx tsx gen-schema.ts > src/generated/setup-schema.ts"
   },
   "dependencies": {
+    "@floating-ui/react": "^0.27.19",
     "@tailwindcss/vite": "^4.2.1",
     "clsx": "^2.1.1",
     "lz-string": "^1.5.0",
