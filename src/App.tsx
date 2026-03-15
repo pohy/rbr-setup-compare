@@ -4,6 +4,7 @@ import { ComparisonTable } from "./components/ComparisonTable.tsx";
 import { DropZone } from "./components/DropZone.tsx";
 import { SetupBrowser } from "./components/SetupBrowser.tsx";
 import { compareSetups } from "./lib/compare.ts";
+import { getClearAllConfirmMessage, getUncheckConfirmMessage } from "./lib/confirm-messages.ts";
 import { loadExampleSetups } from "./lib/example-setups.ts";
 import { writeFileHandle } from "./lib/fs-access.ts";
 import type { CarSetup } from "./lib/lsp-parser.ts";
@@ -69,6 +70,17 @@ function App() {
     async (setup: ScannedSetup, isLoaded: boolean) => {
       const path = setup.relativePath;
       if (isLoaded) {
+        // Check if unchecking the currently-edited setup with pending edits
+        const confirmMsg = getUncheckConfirmMessage(
+          editor.editState?.sourceName,
+          (editor.editState?.edits.size ?? 0) > 0,
+          path,
+        );
+        if (confirmMsg && !window.confirm(confirmMsg)) return;
+        // Discard edit if unchecking the edited setup (even without pending edits)
+        if (editor.editState?.sourceName === path) {
+          editor.discardEdit();
+        }
         // Remove
         setSetups((prev) => prev.filter((s) => s.name !== path));
         fileHandles.current.delete(path);
@@ -90,7 +102,7 @@ function App() {
         }
       }
     },
-    [rbr, setLoadedPathsArr],
+    [rbr, setLoadedPathsArr, editor],
   );
 
   const handleDisconnect = useCallback(async () => {
@@ -491,13 +503,16 @@ function App() {
               disabled={!urlData.current.found && setups.length === 0}
               onClick={() => {
                 if (urlData.current.found) {
+                  editor.discardEdit();
                   setSetups([]);
                   clearUrlHash();
                   urlData.current = { found: false };
                   hasRestoredRef.current = true;
                   restoreFromLocalStorage();
                 } else {
-                  if (!confirm("Remove all loaded setups?")) return;
+                  const msg = getClearAllConfirmMessage((editor.editState?.edits.size ?? 0) > 0);
+                  if (!confirm(msg)) return;
+                  editor.discardEdit();
                   setSetups([]);
                   setLoadedPathsArr([]);
                   clearUrlHash();
