@@ -197,6 +197,7 @@ export function ComparisonTable({
                     </span>
                   }
                   className="flex items-center justify-between gap-2"
+                  disabled={dragIndex !== null}
                 >
                   {onStartEdit && (
                     <>

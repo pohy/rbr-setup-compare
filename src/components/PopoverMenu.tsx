@@ -12,7 +12,7 @@ import {
   useInteractions,
 } from "@floating-ui/react";
 import clsx from "clsx";
-import { createContext, type ReactNode, use, useState } from "react";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
 
 const PopoverContext = createContext<(() => void) | null>(null);
 
@@ -28,11 +28,21 @@ type Props = {
   label?: ReactNode;
   /** Class name for the wrapper div (only used when label is provided). */
   className?: string;
+  /** When true, the popover is forced closed and hover/click interactions are suppressed. */
+  disabled?: boolean;
 };
 
-export function PopoverMenu({ children, label, className }: Props) {
+export function PopoverMenu({ children, label, className, disabled }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
+
+  // Force close when disabled (e.g. during drag)
+  useEffect(() => {
+    if (disabled) {
+      setIsOpen(false);
+      setIsPinned(false);
+    }
+  }, [disabled]);
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
@@ -46,7 +56,7 @@ export function PopoverMenu({ children, label, className }: Props) {
       shift({ padding: 8 }),
       size({
         apply({ rects, elements }) {
-          elements.floating.style.width = `${rects.reference.width}px`;
+          elements.floating.style.minWidth = `${rects.reference.width}px`;
         },
       }),
     ],
@@ -55,7 +65,7 @@ export function PopoverMenu({ children, label, className }: Props) {
   });
 
   const hover = useHover(context, {
-    enabled: !isPinned,
+    enabled: !isPinned && !disabled,
     handleClose: safePolygon(),
     delay: {
       close: 150,
@@ -95,7 +105,7 @@ export function PopoverMenu({ children, label, className }: Props) {
         ref={refs.setFloating}
         style={floatingStyles}
         {...getFloatingProps()}
-        className="z-50 bg-elevated border border-border rounded shadow-lg py-0.5"
+        className="z-50 flex flex-col bg-elevated border border-border rounded shadow-lg py-0.5"
       >
         <PopoverContext value={close}>{children}</PopoverContext>
       </div>

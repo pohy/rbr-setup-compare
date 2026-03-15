@@ -93,6 +93,7 @@ export function SetupBrowser({
         />
         {filter && (
           <button
+            type="button"
             onClick={() => {
               setFilter("");
               filterRef.current?.focus();
