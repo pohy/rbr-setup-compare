@@ -18,6 +18,9 @@ Compare Richard Burns Rally setup files side by side.
 - **Sticky headers and columns** — parameter names and setup columns stay visible while scrolling
 - **Collapsible sections** — expand or collapse setup sections individually
 - **Drag-to-reorder** — rearrange setup columns by dragging
+- **Setup editing** — click a cell to type a new value, or click-and-drag to adjust incrementally (hold Shift for fine 1/10th steps); values are clamped to valid ranges when car metadata is available
+- **Edit diff modes** — compare edits against the original setup or against the reference column
+- **Save edited setups** — download as `.lsp`, overwrite the original file in your RBR directory, or rename and save alongside it
 - **Setup management** — add, remove individual setups, or clear all at once
 - **Shareable links** — copy a URL that encodes the current comparison, so others can open it without needing the original files
 

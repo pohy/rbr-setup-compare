@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { EditConfig } from "./components/ComparisonTable.tsx";
 import { ComparisonTable } from "./components/ComparisonTable.tsx";
 import { DropZone } from "./components/DropZone.tsx";
@@ -13,33 +13,14 @@ import type { ScannedSetup } from "./lib/rbr-scanner.ts";
 import { SECTION_RENAMES, unsanitizeValue } from "./lib/sanitize.ts";
 import { buildShareUrl, clearUrlHash, hydrateFromUrl } from "./lib/url-sharing.ts";
 import { useFilePicker } from "./lib/use-file-picker.ts";
+import { usePersistentState } from "./lib/use-persistent-state.ts";
 import { inferSurface, useRbrDirectory } from "./lib/use-rbr-directory.ts";
 import { stepValue, useSetupEditor } from "./lib/use-setup-editor.ts";
-
-const STORAGE_KEY = "rbr-loaded-paths";
 
 // Reverse of SECTION_RENAMES: display name → raw name
 const SECTION_UNRENAMES: Record<string, string> = {};
 for (const [raw, display] of Object.entries(SECTION_RENAMES)) {
   SECTION_UNRENAMES[display] = raw;
-}
-
-function saveLoadedPaths(paths: Set<string>) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...paths]));
-  } catch {
-    // storage full or unavailable
-  }
-}
-
-function readStoredPaths(): string[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as string[];
-  } catch {
-    return [];
-  }
 }
 
 function App() {
@@ -52,17 +33,8 @@ function App() {
   );
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   // Track which relativePaths from the sidebar are currently loaded
-  const [loadedPaths, _setLoadedPaths] = useState<Set<string>>(new Set());
-  const setLoadedPaths = useCallback(
-    (update: Set<string> | ((prev: Set<string>) => Set<string>)) => {
-      _setLoadedPaths((prev) => {
-        const next = typeof update === "function" ? update(prev) : update;
-        saveLoadedPaths(next);
-        return next;
-      });
-    },
-    [],
-  );
+  const [loadedPathsArr, setLoadedPathsArr] = usePersistentState("rbr-loaded-paths", []);
+  const loadedPaths = useMemo(() => new Set(loadedPathsArr), [loadedPathsArr]);
   const [loadingPaths, setLoadingPaths] = useState<Set<string>>(new Set());
   const hasRestoredRef = useRef(false);
 
@@ -100,11 +72,7 @@ function App() {
         // Remove
         setSetups((prev) => prev.filter((s) => s.name !== path));
         fileHandles.current.delete(path);
-        setLoadedPaths((prev) => {
-          const next = new Set(prev);
-          next.delete(path);
-          return next;
-        });
+        setLoadedPathsArr((prev) => prev.filter((p) => p !== path));
       } else {
         // Load
         setLoadingPaths((prev) => new Set(prev).add(path));
@@ -112,7 +80,7 @@ function App() {
           const [loaded] = await rbr.loadSetups([setup]);
           setSetups((prev) => [...prev, { ...loaded, name: path }]);
           fileHandles.current.set(path, setup.fileHandle);
-          setLoadedPaths((prev) => new Set(prev).add(path));
+          setLoadedPathsArr((prev) => [...prev, path]);
         } finally {
           setLoadingPaths((prev) => {
             const next = new Set(prev);
@@ -122,7 +90,7 @@ function App() {
         }
       }
     },
-    [rbr, setLoadedPaths],
+    [rbr, setLoadedPathsArr],
   );
 
   const handleDisconnect = useCallback(async () => {
@@ -130,15 +98,14 @@ function App() {
     for (const path of loadedPaths) {
       fileHandles.current.delete(path);
     }
-    setLoadedPaths(new Set());
+    setLoadedPathsArr([]);
     setLoadingPaths(new Set());
     await rbr.forgetDirectory();
     setSidebarDismissed(true);
-  }, [rbr, loadedPaths, setLoadedPaths]);
+  }, [rbr, loadedPaths, setLoadedPathsArr]);
 
   const restoreFromLocalStorage = useCallback(async () => {
-    const storedPaths = readStoredPaths();
-    if (storedPaths.length === 0 || rbr.carGroups.length === 0) return;
+    if (loadedPathsArr.length === 0 || rbr.carGroups.length === 0) return;
 
     const setupsByPath = new Map<string, ScannedSetup>();
     for (const group of rbr.carGroups) {
@@ -147,7 +114,7 @@ function App() {
       }
     }
 
-    const toRestore = storedPaths
+    const toRestore = loadedPathsArr
       .map((p) => setupsByPath.get(p))
       .filter((s): s is ScannedSetup => s !== undefined);
 
@@ -157,21 +124,21 @@ function App() {
     setLoadingPaths(new Set(paths));
 
     const results: CarSetup[] = [];
-    const loaded = new Set<string>();
+    const restoredPaths: string[] = [];
     for (const setup of toRestore) {
       try {
         const [parsed] = await rbr.loadSetups([setup]);
         results.push({ ...parsed, name: setup.relativePath });
-        loaded.add(setup.relativePath);
+        restoredPaths.push(setup.relativePath);
         fileHandles.current.set(setup.relativePath, setup.fileHandle);
       } catch (e) {
         console.error(`[rbr-dir] Failed to restore ${setup.relativePath}:`, e);
       }
     }
     setSetups((prev) => [...prev, ...results]);
-    setLoadedPaths(loaded);
+    setLoadedPathsArr(restoredPaths);
     setLoadingPaths(new Set());
-  }, [rbr, setLoadedPaths]);
+  }, [rbr, loadedPathsArr, setLoadedPathsArr]);
 
   // Restore previously loaded setups after scan completes
   useEffect(() => {
@@ -187,26 +154,26 @@ function App() {
         const removed = prev[index];
         if (removed) {
           fileHandles.current.delete(removed.name);
-          setLoadedPaths((lp) => {
-            const next = new Set(lp);
-            next.delete(removed.name);
-            return next;
-          });
+          setLoadedPathsArr((lp) => lp.filter((p) => p !== removed.name));
         }
         return prev.filter((_, i) => i !== index);
       });
     },
-    [setLoadedPaths],
+    [setLoadedPathsArr],
   );
 
-  const handleReorderSetup = useCallback((fromIndex: number, toIndex: number) => {
-    setSetups((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
-    });
-  }, []);
+  const handleReorderSetup = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      setSetups((prev) => {
+        const next = [...prev];
+        const [moved] = next.splice(fromIndex, 1);
+        next.splice(toIndex, 0, moved);
+        setLoadedPathsArr(next.filter((s) => loadedPaths.has(s.name)).map((s) => s.name));
+        return next;
+      });
+    },
+    [setLoadedPathsArr, loadedPaths],
+  );
 
   const handleSaveSetup = useCallback(
     (index: number) => {
@@ -227,6 +194,20 @@ function App() {
     [setups, editor],
   );
 
+  const loadRangesForSetup = useCallback(
+    async (setupName: string) => {
+      const fileName = setupName.split("/").pop() ?? setupName;
+      const surface = inferSurface(fileName);
+      if (!surface) return null;
+
+      const group = rbr.carGroups.find((g) => g.setups.some((s) => s.relativePath === setupName));
+      if (!group) return null;
+
+      return rbr.loadRanges(group.carName, surface);
+    },
+    [rbr],
+  );
+
   const handleStartEdit = useCallback(
     async (index: number) => {
       if (editor.editState) {
@@ -239,22 +220,25 @@ function App() {
       editor.startEdit(setup);
       setEditRanges(null);
 
-      // Try to load range data for this setup
-      const fileName = setup.name.split("/").pop() ?? setup.name;
-      const surface = inferSurface(fileName);
-      if (!surface) return;
-
-      // Find the car group that owns this setup path
-      const group = rbr.carGroups.find((g) => g.setups.some((s) => s.relativePath === setup.name));
-      if (!group) return;
-
-      const ranges = await rbr.loadRanges(group.carName, surface);
+      const ranges = await loadRangesForSetup(setup.name);
       if (ranges) {
         setEditRanges(ranges);
       }
     },
-    [editor, setups, rbr],
+    [editor, setups, loadRangesForSetup],
   );
+
+  // Restore edit ranges when edit state is restored from localStorage but ranges aren't loaded yet
+  useEffect(() => {
+    if (!editor.editState || editRanges) return;
+    let cancelled = false;
+    loadRangesForSetup(editor.editState.sourceName).then((ranges) => {
+      if (!cancelled && ranges) setEditRanges(ranges);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [editor.editState, editRanges, loadRangesForSetup]);
 
   const handleStep = useCallback(
     (displaySection: string, key: string, direction: 1 | -1, fine: boolean) => {
@@ -376,7 +360,11 @@ function App() {
   }, [setups, diffsOnly]);
 
   // Build the comparison, including the edited setup as the last column if editing
-  const editedSetup = editor.getEditedSetup();
+  // Gate on source setup being loaded — on restore, editState may exist before setups are populated
+  const sourceIndex = editor.editState
+    ? setups.findIndex((s) => s.name === editor.editState?.sourceName)
+    : -1;
+  const editedSetup = sourceIndex >= 0 ? editor.getEditedSetup() : null;
   const setupsForComparison = editedSetup ? [...setups, editedSetup] : setups;
   const comparison = setupsForComparison.length >= 1 ? compareSetups(setupsForComparison) : null;
 
@@ -388,24 +376,25 @@ function App() {
     setEditRanges(null);
   }, [editor]);
 
-  const editConfig: EditConfig | undefined = editor.editState
-    ? {
-        columnIndex: setups.length, // always last column
-        sourceIndex: setups.findIndex((s) => s.name === editor.editState?.sourceName),
-        sourceName: editor.editState.sourceName,
-        edits: editor.editState.edits,
-        diffMode: editor.editState.diffMode,
-        rangeMap: editRanges,
-        onCellEdit: handleCellEdit,
-        onCellReset: handleCellReset,
-        onStep: handleStep,
-        onToggleDiffMode: handleToggleDiffMode,
-        onDiscard: handleDiscardEdit,
-        onSave: handleSaveEdit,
-        canOverwrite: fileHandles.current.has(editor.editState?.sourceName ?? ""),
-        onOverwrite: handleOverwriteEdit,
-      }
-    : undefined;
+  const editConfig: EditConfig | undefined =
+    editor.editState && sourceIndex >= 0
+      ? {
+          columnIndex: setups.length, // always last column
+          sourceIndex,
+          sourceName: editor.editState.sourceName,
+          edits: editor.editState.edits,
+          diffMode: editor.editState.diffMode,
+          rangeMap: editRanges,
+          onCellEdit: handleCellEdit,
+          onCellReset: handleCellReset,
+          onStep: handleStep,
+          onToggleDiffMode: handleToggleDiffMode,
+          onDiscard: handleDiscardEdit,
+          onSave: handleSaveEdit,
+          canOverwrite: fileHandles.current.has(editor.editState?.sourceName ?? ""),
+          onOverwrite: handleOverwriteEdit,
+        }
+      : undefined;
 
   const showSidebar = rbr.carGroups.length > 0 && !sidebarDismissed;
   const hasContent = setups.length > 0 || showSidebar;
@@ -499,7 +488,7 @@ function App() {
                 } else {
                   if (!confirm("Remove all loaded setups?")) return;
                   setSetups([]);
-                  setLoadedPaths(new Set());
+                  setLoadedPathsArr([]);
                   clearUrlHash();
                 }
               }}

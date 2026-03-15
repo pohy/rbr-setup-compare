@@ -57,6 +57,9 @@ export function PopoverMenu({ children, label, className }: Props) {
   const hover = useHover(context, {
     enabled: !isPinned,
     handleClose: safePolygon(),
+    delay: {
+      close: 150,
+    },
   });
   const dismiss = useDismiss(context);
 

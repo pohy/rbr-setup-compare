@@ -93,7 +93,10 @@ export function SetupBrowser({
         />
         {filter && (
           <button
-            onClick={() => { setFilter(""); filterRef.current?.focus(); }}
+            onClick={() => {
+              setFilter("");
+              filterRef.current?.focus();
+            }}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs leading-none p-0.5 cursor-pointer"
             aria-label="Clear filter"
           >

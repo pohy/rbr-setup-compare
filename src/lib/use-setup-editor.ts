@@ -1,6 +1,8 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { deserializeEditState, serializeEditState } from "./edit-state-serialization.ts";
 import type { CarSetup } from "./lsp-parser.ts";
 import type { RangeTriplet } from "./range-parser.ts";
+import { usePersistentState } from "./use-persistent-state.ts";
 
 export type DiffMode = "vs-reference" | "vs-original";
 
@@ -62,27 +64,37 @@ export function stepValue(
 }
 
 export function useSetupEditor() {
-  const [editState, setEditState] = useState<EditState | null>(null);
+  const persistOptions = useMemo(
+    () => ({ serialize: serializeEditState, deserialize: deserializeEditState }),
+    [],
+  );
+  const [editState, setEditState] = usePersistentState("rbr-edit-state", null, persistOptions);
 
-  const startEdit = useCallback((setup: CarSetup) => {
-    setEditState({
-      sourceName: setup.name,
-      sourceSetup: deepCloneSetup(setup),
-      edits: new Map(),
-      diffMode: "vs-original",
-    });
-  }, []);
+  const startEdit = useCallback(
+    (setup: CarSetup) => {
+      setEditState({
+        sourceName: setup.name,
+        sourceSetup: deepCloneSetup(setup),
+        edits: new Map(),
+        diffMode: "vs-original",
+      });
+    },
+    [setEditState],
+  );
 
-  const updateValue = useCallback((section: string, key: string, rawValue: number | string) => {
-    setEditState((prev) => {
-      if (!prev) return prev;
-      const newEdits = new Map(prev.edits);
-      const sectionEdits = new Map(newEdits.get(section) ?? []);
-      sectionEdits.set(key, rawValue);
-      newEdits.set(section, sectionEdits);
-      return { ...prev, edits: newEdits };
-    });
-  }, []);
+  const updateValue = useCallback(
+    (section: string, key: string, rawValue: number | string) => {
+      setEditState((prev) => {
+        if (!prev) return prev;
+        const newEdits = new Map(prev.edits);
+        const sectionEdits = new Map(newEdits.get(section) ?? []);
+        sectionEdits.set(key, rawValue);
+        newEdits.set(section, sectionEdits);
+        return { ...prev, edits: newEdits };
+      });
+    },
+    [setEditState],
+  );
 
   const updateValueWith = useCallback(
     (section: string, key: string, fn: (current: number) => number) => {
@@ -102,33 +114,39 @@ export function useSetupEditor() {
         return { ...prev, edits: newEdits };
       });
     },
-    [],
+    [setEditState],
   );
 
-  const setDiffMode = useCallback((mode: DiffMode) => {
-    setEditState((prev) => (prev ? { ...prev, diffMode: mode } : prev));
-  }, []);
+  const setDiffMode = useCallback(
+    (mode: DiffMode) => {
+      setEditState((prev) => (prev ? { ...prev, diffMode: mode } : prev));
+    },
+    [setEditState],
+  );
 
-  const resetValue = useCallback((section: string, key: string) => {
-    setEditState((prev) => {
-      if (!prev) return prev;
-      const sectionEdits = prev.edits.get(section);
-      if (!sectionEdits?.has(key)) return prev;
-      const newEdits = new Map(prev.edits);
-      const newSectionEdits = new Map(sectionEdits);
-      newSectionEdits.delete(key);
-      if (newSectionEdits.size === 0) {
-        newEdits.delete(section);
-      } else {
-        newEdits.set(section, newSectionEdits);
-      }
-      return { ...prev, edits: newEdits };
-    });
-  }, []);
+  const resetValue = useCallback(
+    (section: string, key: string) => {
+      setEditState((prev) => {
+        if (!prev) return prev;
+        const sectionEdits = prev.edits.get(section);
+        if (!sectionEdits?.has(key)) return prev;
+        const newEdits = new Map(prev.edits);
+        const newSectionEdits = new Map(sectionEdits);
+        newSectionEdits.delete(key);
+        if (newSectionEdits.size === 0) {
+          newEdits.delete(section);
+        } else {
+          newEdits.set(section, newSectionEdits);
+        }
+        return { ...prev, edits: newEdits };
+      });
+    },
+    [setEditState],
+  );
 
   const discardEdit = useCallback(() => {
     setEditState(null);
-  }, []);
+  }, [setEditState]);
 
   const getEditedSetup = useCallback((): CarSetup | null => {
     if (!editState) return null;

@@ -25,14 +25,9 @@ export function EditColumnHeader({
   return (
     <PopoverMenu
       label={
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="truncate text-text-primary" title={name}>
-            {name.replace(/\.lsp$/, "")}
-          </span>
-          <span className="text-accent text-[10px] uppercase tracking-wider shrink-0">
-            (editing)
-          </span>
-        </div>
+        <span className="truncate text-accent" title={name}>
+          {name.replace(/\.lsp$/, "")}
+        </span>
       }
       className="flex items-center justify-between gap-2"
     >
