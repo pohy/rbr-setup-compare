@@ -488,6 +488,7 @@ function App() {
             )}
             <button
               type="button"
+              disabled={!urlData.current.found && setups.length === 0}
               onClick={() => {
                 if (urlData.current.found) {
                   setSetups([]);
@@ -502,7 +503,11 @@ function App() {
                   clearUrlHash();
                 }
               }}
-              className="text-xs text-text-muted hover:text-text-secondary cursor-pointer uppercase tracking-wider"
+              className={`text-xs uppercase tracking-wider ${
+                !urlData.current.found && setups.length === 0
+                  ? "text-text-muted/40 cursor-not-allowed"
+                  : "text-text-muted hover:text-text-secondary cursor-pointer"
+              }`}
             >
               {urlData.current.found ? "Dismiss shared" : "Clear all"}
             </button>
