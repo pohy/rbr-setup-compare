@@ -1,6 +1,7 @@
 import clsx from "clsx";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { CarGroup, ScannedSetup } from "../lib/rbr-scanner.ts";
+import { usePersistentState } from "../lib/use-persistent-state.ts";
 
 type Props = {
   carGroups: CarGroup[];
@@ -25,12 +26,8 @@ export function SetupBrowser({
 }: Props) {
   const [expanded, setExpanded] = useState(true);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-  const [filter, setFilter] = useState(() => localStorage.getItem("rbr-setup-filter") ?? "");
-
-  const updateFilter = (value: string) => {
-    setFilter(value);
-    localStorage.setItem("rbr-setup-filter", value);
-  };
+  const [filter, setFilter] = usePersistentState("rbr-setup-filter", "");
+  const filterRef = useRef<HTMLInputElement>(null);
 
   const filterLower = filter.toLowerCase();
 
@@ -85,14 +82,28 @@ export function SetupBrowser({
       </button>
 
       {/* Search */}
-      <div className="px-3 py-2 border-b border-border">
+      <div className="px-3 py-2 border-b border-border relative">
         <input
+          ref={filterRef}
           type="text"
           value={filter}
-          onChange={(e) => updateFilter(e.target.value)}
+          onChange={(e) => setFilter(e.target.value)}
           placeholder="Filter cars / files..."
-          className="w-full bg-base border border-border px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+          className="w-full bg-base border border-border px-2 py-1 pr-6 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
         />
+        {filter && (
+          <button
+            type="button"
+            onClick={() => {
+              setFilter("");
+              filterRef.current?.focus();
+            }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs leading-none p-0.5 cursor-pointer"
+            aria-label="Clear filter"
+          >
+            &#x2715;
+          </button>
+        )}
       </div>
 
       {/* Content */}

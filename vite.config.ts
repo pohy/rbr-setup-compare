@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
@@ -28,5 +29,16 @@ function umamiPlugin(): Plugin {
 
 export default defineConfig({
   base: "/rbr-setup-compare/",
-  plugins: [react(), tailwindcss(), umamiPlugin()],
+  plugins: [
+    react({
+      babel: {
+        plugins: ["babel-plugin-react-compiler"],
+      },
+    }),
+    tailwindcss(),
+    umamiPlugin(),
+  ],
+  test: {
+    setupFiles: ["./src/test-setup.ts"],
+  },
 });

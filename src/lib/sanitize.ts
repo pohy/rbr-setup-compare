@@ -19,6 +19,16 @@ export function getUnit(key: string): string | undefined {
   return getFieldConfig(key)?.unit;
 }
 
+export function getModifier(key: string): number {
+  return getFieldConfig(key)?.modifier ?? 1;
+}
+
+export function unsanitizeValue(key: string, displayValue: number): number {
+  const modifier = getModifier(key);
+  if (modifier === 1) return displayValue;
+  return displayValue / modifier;
+}
+
 function cleanNumber(n: number): number {
   const rounded = Math.round(n * 10000) / 10000;
   return rounded;
