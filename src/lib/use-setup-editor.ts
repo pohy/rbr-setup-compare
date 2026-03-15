@@ -154,6 +154,22 @@ export function useSetupEditor() {
     [setEditState],
   );
 
+  const relocateSource = useCallback(
+    (newName: string) => {
+      setEditState((prev) => {
+        if (!prev) return prev;
+        const baked = deriveEditedSetup(prev.sourceSetup, prev.edits);
+        return {
+          sourceName: newName,
+          sourceSetup: baked,
+          edits: new Map(),
+          diffMode: prev.diffMode,
+        };
+      });
+    },
+    [setEditState],
+  );
+
   const discardEdit = useCallback(() => {
     setEditState(null);
   }, [setEditState]);
@@ -169,6 +185,7 @@ export function useSetupEditor() {
     updateValue,
     updateValueWith,
     updateSource,
+    relocateSource,
     resetValue,
     setDiffMode,
     discardEdit,

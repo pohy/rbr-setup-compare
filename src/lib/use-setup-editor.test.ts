@@ -288,3 +288,76 @@ describe("useSetupEditor.updateValueWith", () => {
     expect(edited?.sections.NonExistent).toBeUndefined();
   });
 });
+
+describe("useSetupEditor.relocateSource", () => {
+  const setup: CarSetup = {
+    name: "rsfdata/cars/Car/setups/gravel.lsp",
+    sections: {
+      SpringDamperLF: {
+        id: ":-D",
+        values: { SpringStiffness: 50000, SpringLength: 0.22 },
+        rawValues: { SpringStiffness: "50000", SpringLength: "0.22" },
+      },
+    },
+  };
+
+  it("updates sourceName to new path", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    act(() => result.current.relocateSource("SavedGames/Car/gravel.lsp"));
+
+    expect(result.current.editState?.sourceName).toBe("SavedGames/Car/gravel.lsp");
+  });
+
+  it("clears edits", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    act(() => result.current.updateValue("SpringDamperLF", "SpringStiffness", 55000));
+    act(() => result.current.relocateSource("SavedGames/Car/gravel.lsp"));
+
+    expect(result.current.editState?.edits.size).toBe(0);
+  });
+
+  it("bakes edits into sourceSetup", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    act(() => result.current.updateValue("SpringDamperLF", "SpringStiffness", 55000));
+    act(() => result.current.relocateSource("SavedGames/Car/gravel.lsp"));
+
+    expect(
+      result.current.editState?.sourceSetup.sections.SpringDamperLF.values.SpringStiffness,
+    ).toBe(55000);
+    // Unedited value preserved
+    expect(result.current.editState?.sourceSetup.sections.SpringDamperLF.values.SpringLength).toBe(
+      0.22,
+    );
+  });
+
+  it("getEditedSetup returns setup with baked values", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    act(() => result.current.updateValue("SpringDamperLF", "SpringStiffness", 55000));
+    act(() => result.current.relocateSource("SavedGames/Car/gravel.lsp"));
+
+    const edited = result.current.getEditedSetup();
+    expect(edited?.sections.SpringDamperLF.values.SpringStiffness).toBe(55000);
+  });
+
+  it("preserves diffMode", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    act(() => result.current.setDiffMode("vs-reference"));
+    act(() => result.current.relocateSource("SavedGames/Car/gravel.lsp"));
+
+    expect(result.current.editState?.diffMode).toBe("vs-reference");
+  });
+
+  it("is a no-op when no edit state", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    // Clear any leftover persisted state from previous tests
+    act(() => result.current.discardEdit());
+    act(() => result.current.relocateSource("SavedGames/Car/gravel.lsp"));
+
+    expect(result.current.editState).toBeNull();
+  });
+});
