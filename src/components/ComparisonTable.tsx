@@ -17,8 +17,8 @@ for (const [raw, display] of Object.entries(SECTION_RENAMES)) {
 
 export type EditConfig = {
   columnIndex: number;
-  sourceIndex: number;
-  sourceName: string;
+  diffRefIndex: number;
+  canToggleDiffMode: boolean;
   edits: Map<string, Map<string, number | string>>;
   diffMode: DiffMode;
   rangeMap: RangeMap | null;
@@ -105,8 +105,7 @@ export function ComparisonTable({
 
   const colCount = setupNames.length + 1;
   const isEditColumn = (i: number) => editConfig != null && i === editConfig.columnIndex;
-  const diffRefIndex =
-    editConfig != null ? (editConfig.diffMode === "vs-original" ? editConfig.sourceIndex : 0) : -1;
+  const diffRefIndex = editConfig?.diffRefIndex ?? -1;
 
   return (
     <div ref={containerRef} className="mx-auto w-fit">
@@ -137,7 +136,7 @@ export function ComparisonTable({
                   key={i}
                   role="columnheader"
                   tabIndex={0}
-                  className="p-2 border border-border border-l-accent bg-accent/5 whitespace-nowrap"
+                  className="p-2 border border-border bg-accent/5 whitespace-nowrap"
                 >
                   <EditColumnHeader
                     name={name}
@@ -147,7 +146,7 @@ export function ComparisonTable({
                     onSave={editConfig?.onSave ?? (() => {})}
                     canOverwrite={editConfig?.canOverwrite ?? false}
                     onOverwrite={editConfig?.onOverwrite ?? (() => {})}
-                    canToggleDiffMode={editConfig != null && editConfig.sourceIndex !== 0}
+                    canToggleDiffMode={editConfig?.canToggleDiffMode ?? false}
                   />
                 </div>
               );
@@ -186,7 +185,7 @@ export function ComparisonTable({
                 onDragEnd={clearDragState}
                 className={clsx(
                   "p-2 border whitespace-nowrap cursor-grab",
-                  i === diffRefIndex ? "border-accent/40 bg-accent/5" : "border-border",
+                  i === diffRefIndex ? "border-border border-t-2 border-t-accent" : "border-border",
                   i === 0 && "sticky left-[var(--param-w)] z-20 bg-elevated",
                   dragIndex !== null && dragIndex !== i && "opacity-50",
                 )}
@@ -338,11 +337,9 @@ function Section({
                 return row.values.map((val, i) => {
                   const isEdit = editConfig != null && i === editConfig.columnIndex;
 
-                  // Determine the reference column for diff calculation
-                  let refIndex = 0;
-                  if (isEdit && editConfig?.diffMode === "vs-original") {
-                    refIndex = editConfig.sourceIndex;
-                  }
+                  // Reference column: for the edit column use the pre-computed diffRefIndex,
+                  // for regular columns always compare against column 0.
+                  const refIndex = isEdit ? (editConfig?.diffRefIndex ?? 0) : 0;
 
                   const ref = row.values[refIndex];
                   const numVal = val !== null ? Number(val) : NaN;
@@ -365,9 +362,10 @@ function Section({
                       })
                       .replace(",", ".");
 
-                  // Check if this cell is edited
+                  // Check if this cell is edited (edits map uses raw section names)
+                  const rawSection = SECTION_UNRENAMES[section.sectionName] ?? section.sectionName;
                   const isEdited =
-                    isEdit && editConfig?.edits.get(section.sectionName)?.has(row.key) === true;
+                    isEdit && editConfig?.edits.get(rawSection)?.has(row.key) === true;
 
                   if (isEdit) {
                     // Look up range for this row and convert to display units
@@ -402,9 +400,10 @@ function Section({
                       <div
                         key={i}
                         data-col={i}
+                        data-testid={`edit-cell-${section.sectionName}-${row.key}`}
                         className={clsx(
-                          "p-2 border border-l-accent bg-accent/5 whitespace-nowrap cursor-text",
-                          isEdited ? "border-accent/40" : "border-border",
+                          "p-2 border whitespace-nowrap cursor-text",
+                          isEdited ? "border-accent/40 bg-accent/5" : "border-border",
                           ratios && "relative",
                           ratios && "z-[1]",
                           cellDiffers && "bg-diff-bg",
