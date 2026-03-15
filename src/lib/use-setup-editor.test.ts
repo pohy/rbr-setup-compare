@@ -197,6 +197,42 @@ describe("stepValue", () => {
   });
 });
 
+describe("useSetupEditor.setDiffMode", () => {
+  const setup: CarSetup = {
+    name: "test.lsp",
+    sections: {
+      Car: { id: "Car", values: { MaxSteeringLock: 0.75 }, rawValues: { MaxSteeringLock: "0.75" } },
+    },
+  };
+
+  it("starts with vs-original", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    expect(result.current.editState?.diffMode).toBe("vs-original");
+  });
+
+  it("toggles to vs-reference and back", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+
+    act(() => result.current.setDiffMode("vs-reference"));
+    expect(result.current.editState?.diffMode).toBe("vs-reference");
+
+    act(() => result.current.setDiffMode("vs-original"));
+    expect(result.current.editState?.diffMode).toBe("vs-original");
+  });
+
+  it("resetting to vs-reference clears stale vs-original state", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+
+    // Simulate: toggle to vs-reference, then reset back (as App.tsx would on reorder)
+    act(() => result.current.setDiffMode("vs-reference"));
+    act(() => result.current.setDiffMode("vs-reference")); // idempotent
+    expect(result.current.editState?.diffMode).toBe("vs-reference");
+  });
+});
+
 describe("useSetupEditor.updateValueWith", () => {
   const setup: CarSetup = {
     name: "test.lsp",

@@ -364,6 +364,14 @@ function App() {
   const sourceIndex = editor.editState
     ? setups.findIndex((s) => s.name === editor.editState?.sourceName)
     : -1;
+  // When source IS the reference (index 0), orig and ref are the same column —
+  // reset diffMode so it doesn't leak a stale toggle state after reorder.
+  useEffect(() => {
+    if (sourceIndex === 0 && editor.editState?.diffMode !== "vs-reference") {
+      editor.setDiffMode("vs-reference");
+    }
+  }, [sourceIndex, editor]);
+
   const editedSetup = sourceIndex >= 0 ? editor.getEditedSetup() : null;
   const setupsForComparison = editedSetup ? [...setups, editedSetup] : setups;
   const comparison = setupsForComparison.length >= 1 ? compareSetups(setupsForComparison) : null;
@@ -376,25 +384,28 @@ function App() {
     setEditRanges(null);
   }, [editor]);
 
-  const editConfig: EditConfig | undefined =
-    editor.editState && sourceIndex >= 0
-      ? {
-          columnIndex: setups.length, // always last column
-          sourceIndex,
-          sourceName: editor.editState.sourceName,
-          edits: editor.editState.edits,
-          diffMode: editor.editState.diffMode,
-          rangeMap: editRanges,
-          onCellEdit: handleCellEdit,
-          onCellReset: handleCellReset,
-          onStep: handleStep,
-          onToggleDiffMode: handleToggleDiffMode,
-          onDiscard: handleDiscardEdit,
-          onSave: handleSaveEdit,
-          canOverwrite: fileHandles.current.has(editor.editState?.sourceName ?? ""),
-          onOverwrite: handleOverwriteEdit,
-        }
-      : undefined;
+  const editConfig: EditConfig | undefined = (() => {
+    if (!editor.editState || sourceIndex < 0) return undefined;
+    const canToggleDiffMode = sourceIndex !== 0;
+    const effectiveDiffMode = canToggleDiffMode ? editor.editState.diffMode : "vs-reference";
+    const diffRefIndex = effectiveDiffMode === "vs-original" ? sourceIndex : 0;
+    return {
+      columnIndex: setups.length, // always last column
+      diffRefIndex,
+      canToggleDiffMode,
+      edits: editor.editState.edits,
+      diffMode: effectiveDiffMode,
+      rangeMap: editRanges,
+      onCellEdit: handleCellEdit,
+      onCellReset: handleCellReset,
+      onStep: handleStep,
+      onToggleDiffMode: handleToggleDiffMode,
+      onDiscard: handleDiscardEdit,
+      onSave: handleSaveEdit,
+      canOverwrite: fileHandles.current.has(editor.editState?.sourceName ?? ""),
+      onOverwrite: handleOverwriteEdit,
+    };
+  })();
 
   const showSidebar = rbr.carGroups.length > 0 && !sidebarDismissed;
   const hasContent = setups.length > 0 || showSidebar;
