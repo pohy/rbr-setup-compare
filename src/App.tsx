@@ -10,13 +10,15 @@ import { writeFileHandle } from "./lib/fs-access.ts";
 import type { CarSetup } from "./lib/lsp-parser.ts";
 import { setupToLsp } from "./lib/lsp-writer.ts";
 import { getRangeForKey, type RangeMap } from "./lib/range-mapping.ts";
-import type { ScannedSetup } from "./lib/rbr-scanner.ts";
+import type { CarGroup, ScannedSetup } from "./lib/rbr-scanner.ts";
 import { SECTION_RENAMES, unsanitizeValue } from "./lib/sanitize.ts";
 import { buildShareUrl, clearUrlHash, hydrateFromUrl } from "./lib/url-sharing.ts";
+import { useDirectoryWatcher } from "./lib/use-directory-watcher.ts";
 import { useFilePicker } from "./lib/use-file-picker.ts";
 import { usePersistentState } from "./lib/use-persistent-state.ts";
 import { inferSurface, useRbrDirectory } from "./lib/use-rbr-directory.ts";
 import { stepValue, useSetupEditor } from "./lib/use-setup-editor.ts";
+import type { WatcherChange } from "./lib/watcher-records.ts";
 
 // Reverse of SECTION_RENAMES: display name → raw name
 const SECTION_UNRENAMES: Record<string, string> = {};
@@ -159,6 +161,63 @@ function App() {
     hasRestoredRef.current = true;
     restoreFromLocalStorage();
   }, [rbr.carGroups.length, restoreFromLocalStorage]);
+
+  // --- Directory watcher: auto-detect external file changes ---
+  const handleDirectoryChanges = useCallback(
+    async (changes: WatcherChange[], newGroups: CarGroup[]) => {
+      rbr.updateCarGroups(newGroups);
+
+      const disappeared = changes.filter((c) => c.type === "disappeared");
+      const modified = changes.filter((c) => c.type === "modified");
+
+      // Remove deleted setups
+      for (const change of disappeared) {
+        if (loadedPaths.has(change.relativePath)) {
+          // Discard edit if the deleted file is the one being edited
+          if (editor.editState?.sourceName === change.relativePath) {
+            editor.discardEdit();
+          }
+          setSetups((prev) => prev.filter((s) => s.name !== change.relativePath));
+          fileHandles.current.delete(change.relativePath);
+          setLoadedPathsArr((prev) => prev.filter((p) => p !== change.relativePath));
+        }
+      }
+
+      // Reload modified loaded setups
+      for (const change of modified) {
+        if (!loadedPaths.has(change.relativePath)) continue;
+
+        // Find the ScannedSetup in the new groups
+        let scanned: ScannedSetup | undefined;
+        for (const group of newGroups) {
+          scanned = group.setups.find((s) => s.relativePath === change.relativePath);
+          if (scanned) break;
+        }
+        if (!scanned) continue;
+
+        try {
+          const [reloaded] = await rbr.loadSetups([scanned]);
+          const namedSetup = { ...reloaded, name: change.relativePath };
+          setSetups((prev) => prev.map((s) => (s.name === change.relativePath ? namedSetup : s)));
+          fileHandles.current.set(change.relativePath, scanned.fileHandle);
+
+          // Update editor source if the modified file is being edited
+          if (editor.editState?.sourceName === change.relativePath) {
+            editor.updateSource(namedSetup);
+          }
+        } catch (e) {
+          console.error(`[directory-watcher] Failed to reload ${change.relativePath}:`, e);
+        }
+      }
+    },
+    [rbr, loadedPaths, editor, setLoadedPathsArr],
+  );
+
+  useDirectoryWatcher({
+    directoryHandle: rbr.handle,
+    enabled: !rbr.isScanning && rbr.carGroups.length > 0,
+    onChanges: handleDirectoryChanges,
+  });
 
   const handleRemoveSetup = useCallback(
     (index: number) => {
