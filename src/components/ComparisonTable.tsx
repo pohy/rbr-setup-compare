@@ -30,6 +30,8 @@ export type EditConfig = {
   onSave: () => void;
   canOverwrite: boolean;
   onOverwrite: (fileName: string) => void;
+  canSaveToSavedGames: boolean;
+  onSaveToSavedGames: (fileName: string) => void;
 };
 
 type Props = {
@@ -146,6 +148,8 @@ export function ComparisonTable({
                     onSave={editConfig?.onSave ?? (() => {})}
                     canOverwrite={editConfig?.canOverwrite ?? false}
                     onOverwrite={editConfig?.onOverwrite ?? (() => {})}
+                    canSaveToSavedGames={editConfig?.canSaveToSavedGames ?? false}
+                    onSaveToSavedGames={editConfig?.onSaveToSavedGames ?? (() => {})}
                     canToggleDiffMode={editConfig?.canToggleDiffMode ?? false}
                   />
                 </div>

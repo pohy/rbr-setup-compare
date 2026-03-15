@@ -9,6 +9,8 @@ type Props = {
   onSave: () => void;
   canOverwrite: boolean;
   onOverwrite: (fileName: string) => void;
+  canSaveToSavedGames: boolean;
+  onSaveToSavedGames: (fileName: string) => void;
   canToggleDiffMode: boolean;
 };
 
@@ -20,6 +22,8 @@ export function EditColumnHeader({
   onSave,
   canOverwrite,
   onOverwrite,
+  canSaveToSavedGames,
+  onSaveToSavedGames,
   canToggleDiffMode,
 }: Props) {
   return (
@@ -71,6 +75,19 @@ export function EditColumnHeader({
             Rename and save
           </PopoverMenu.Item>
         </>
+      )}
+      {canSaveToSavedGames && (
+        <PopoverMenu.Item
+          onClick={() => {
+            const result = window.prompt("Save to SavedGames as:", name);
+            if (result != null && result !== "") {
+              onSaveToSavedGames(result);
+            }
+          }}
+          variant="accent"
+        >
+          Save to SavedGames
+        </PopoverMenu.Item>
       )}
       <PopoverMenu.Divider />
       <PopoverMenu.Item
