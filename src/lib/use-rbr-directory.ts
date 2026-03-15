@@ -141,6 +141,10 @@ export function useRbrDirectory() {
     setError(null);
   }, []);
 
+  const updateCarGroups = useCallback((groups: CarGroup[]) => {
+    setCarGroups(groups);
+  }, []);
+
   return {
     isSupported,
     hasStoredHandle,
@@ -153,5 +157,6 @@ export function useRbrDirectory() {
     loadSetups,
     loadRanges,
     forgetDirectory,
+    updateCarGroups,
   };
 }

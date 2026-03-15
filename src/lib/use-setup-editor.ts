@@ -144,6 +144,16 @@ export function useSetupEditor() {
     [setEditState],
   );
 
+  const updateSource = useCallback(
+    (newSetup: CarSetup) => {
+      setEditState((prev) => {
+        if (!prev || prev.sourceName !== newSetup.name) return prev;
+        return { ...prev, sourceSetup: deepCloneSetup(newSetup) };
+      });
+    },
+    [setEditState],
+  );
+
   const discardEdit = useCallback(() => {
     setEditState(null);
   }, [setEditState]);
@@ -158,6 +168,7 @@ export function useSetupEditor() {
     startEdit,
     updateValue,
     updateValueWith,
+    updateSource,
     resetValue,
     setDiffMode,
     discardEdit,
