@@ -389,6 +389,18 @@ function Section({
                       }
                     }
 
+                    const fillPct =
+                      displayRange && !Number.isNaN(numVal)
+                        ? ((numVal - displayRange.min) / (displayRange.max - displayRange.min)) *
+                          100
+                        : null;
+                    const fillStyle =
+                      fillPct !== null
+                        ? {
+                            background: `linear-gradient(to right, oklch(0.7 0.15 85 / 0.12) ${fillPct}%, transparent ${fillPct}%)`,
+                          }
+                        : undefined;
+
                     let editDiffSpan: React.ReactNode = null;
                     if (cellDiffers && bothNumeric && diff !== 0) {
                       const cls = diff > 0 ? "text-diff-positive" : "text-diff-negative";
@@ -408,11 +420,11 @@ function Section({
                         data-testid={`edit-cell-${section.sectionName}-${row.key}`}
                         className={clsx(
                           "p-2 border whitespace-nowrap cursor-text",
-                          isEdited ? "border-accent/40 bg-accent/5" : "border-border",
+                          isEdited ? "border-accent/40" : "border-border",
                           ratios && "relative",
                           ratios && "z-[1]",
-                          cellDiffers && "bg-diff-bg",
                         )}
+                        style={fillStyle}
                       >
                         <EditableCell
                           value={val}
@@ -480,7 +492,6 @@ function Section({
                         cellColor,
                         i === 0 && !ratios && "z-[2]",
                         i === 0 && "sticky left-[var(--param-w)] bg-base group-hover:bg-elevated",
-                        cellDiffers && "bg-diff-bg",
                         dragIndex !== null && dragIndex !== i && "opacity-50",
                       )}
                     >
