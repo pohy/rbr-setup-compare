@@ -24,3 +24,16 @@ export async function readFileHandle(handle: FileSystemFileHandle): Promise<stri
   const file = await handle.getFile();
   return file.text();
 }
+
+export async function writeFileHandle(
+  handle: FileSystemFileHandle,
+  content: string,
+): Promise<void> {
+  const permission = await handle.requestPermission({ mode: "readwrite" });
+  if (permission !== "granted") {
+    throw new Error("Write permission denied");
+  }
+  const writable = await handle.createWritable();
+  await writable.write(content);
+  await writable.close();
+}
