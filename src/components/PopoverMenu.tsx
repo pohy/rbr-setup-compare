@@ -92,7 +92,7 @@ export function PopoverMenu({ children, label, className, disabled }: Props) {
   };
 
   const dotsIcon = (
-    <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5" aria-hidden="true">
+    <svg viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
       <circle cx="8" cy="3" r="1.5" />
       <circle cx="8" cy="8" r="1.5" />
       <circle cx="8" cy="13" r="1.5" />
@@ -105,7 +105,7 @@ export function PopoverMenu({ children, label, className, disabled }: Props) {
         ref={refs.setFloating}
         style={floatingStyles}
         {...getFloatingProps()}
-        className="z-50 flex flex-col bg-elevated border border-border rounded shadow-lg py-0.5"
+        className="z-50 flex flex-col rounded border border-border bg-elevated py-0.5 shadow-lg"
       >
         <PopoverContext value={close}>{children}</PopoverContext>
       </div>
@@ -122,7 +122,7 @@ export function PopoverMenu({ children, label, className, disabled }: Props) {
             type="button"
             onClick={handleTriggerClick}
             className={clsx(
-              "flex items-center justify-center w-5 h-5 text-text-muted hover:text-text-primary cursor-pointer rounded shrink-0",
+              "flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-text-muted hover:text-text-primary",
               isOpen && "text-text-primary",
             )}
             title="Actions"
@@ -143,7 +143,7 @@ export function PopoverMenu({ children, label, className, disabled }: Props) {
         type="button"
         {...getReferenceProps({ onClick: handleTriggerClick })}
         className={clsx(
-          "flex items-center justify-center w-5 h-5 text-text-muted hover:text-text-primary cursor-pointer rounded shrink-0",
+          "flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-text-muted hover:text-text-primary",
           isOpen && "text-text-primary",
         )}
         title="Actions"
@@ -171,14 +171,14 @@ function Item({ onClick, keepOpen, variant, disabled, children, ...rest }: ItemP
         if (!keepOpen) close?.();
       }}
       className={clsx(
-        "w-full text-left px-2 py-0.5 text-xs whitespace-nowrap",
+        "w-full whitespace-nowrap px-2 py-0.5 text-left text-xs",
         disabled
-          ? "text-text-muted/40 cursor-not-allowed"
+          ? "cursor-not-allowed text-text-muted/40"
           : variant === "danger"
-            ? "text-text-muted hover:text-diff-negative cursor-pointer"
+            ? "cursor-pointer text-text-muted hover:text-diff-negative"
             : variant === "accent"
-              ? "text-text-muted hover:text-accent cursor-pointer"
-              : "text-text-muted hover:text-text-secondary cursor-pointer",
+              ? "cursor-pointer text-text-muted hover:text-accent"
+              : "cursor-pointer text-text-muted hover:text-text-secondary",
       )}
       {...rest}
     >
@@ -188,7 +188,7 @@ function Item({ onClick, keepOpen, variant, disabled, children, ...rest }: ItemP
 }
 
 function Divider() {
-  return <div className="my-0.5 border-t border-border" />;
+  return <div className="my-0.5 border-border border-t" />;
 }
 
 PopoverMenu.Item = Item;
