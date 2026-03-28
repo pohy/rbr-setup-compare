@@ -535,7 +535,7 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex bg-base text-text-primary">
+    <div className="flex h-screen bg-base text-text-primary">
       <DropZone
         hasFiles={true}
         onFilesSelected={processFiles}
@@ -560,25 +560,25 @@ function App() {
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col">
         {/* Toolbar */}
-        <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-2 bg-surface border-b border-border">
-          <span className="text-[10px] uppercase tracking-widest text-text-muted font-medium select-none">
+        <div className="sticky top-0 z-20 flex items-center justify-between border-border border-b bg-surface px-4 py-2">
+          <span className="select-none font-medium text-[10px] text-text-muted uppercase tracking-widest">
             RBR Setup Compare
           </span>
 
           <div className="flex items-center gap-4">
-            <span className="text-xs text-text-secondary">
+            <span className="text-text-secondary text-xs">
               {setups.length} file{setups.length !== 1 ? "s" : ""}
             </span>
-            <label className="flex items-center gap-1.5 cursor-pointer">
+            <label className="flex cursor-pointer items-center gap-1.5">
               <input
                 type="checkbox"
                 checked={diffsOnly}
                 onChange={(e) => setDiffsOnly(e.target.checked)}
                 className="cursor-pointer accent-accent"
               />
-              <span className="text-xs text-text-secondary uppercase tracking-wider">
+              <span className="text-text-secondary text-xs uppercase tracking-wider">
                 Diffs only
               </span>
             </label>
@@ -589,7 +589,7 @@ function App() {
               <button
                 type="button"
                 onClick={handleOpenDirectory}
-                className="text-xs text-text-muted hover:text-text-secondary cursor-pointer uppercase tracking-wider"
+                className="cursor-pointer text-text-muted text-xs uppercase tracking-wider hover:text-text-secondary"
               >
                 Open RBR folder
               </button>
@@ -616,8 +616,8 @@ function App() {
               }}
               className={`text-xs uppercase tracking-wider ${
                 !urlData.current.found && setups.length === 0
-                  ? "text-text-muted/40 cursor-not-allowed"
-                  : "text-text-muted hover:text-text-secondary cursor-pointer"
+                  ? "cursor-not-allowed text-text-muted/40"
+                  : "cursor-pointer text-text-muted hover:text-text-secondary"
               }`}
             >
               {urlData.current.found ? "Dismiss shared" : "Clear all"}
@@ -629,12 +629,12 @@ function App() {
               title="Copy a shareable link to this comparison"
               className={`text-xs uppercase tracking-wider ${
                 setups.length === 0
-                  ? "text-text-muted/40 cursor-not-allowed"
+                  ? "cursor-not-allowed text-text-muted/40"
                   : shareStatus
                     ? shareStatus.startsWith("Link")
-                      ? "text-diff-positive cursor-pointer"
-                      : "text-diff-negative cursor-pointer"
-                    : "text-blue-400 hover:text-blue-300 cursor-pointer"
+                      ? "cursor-pointer text-diff-positive"
+                      : "cursor-pointer text-diff-negative"
+                    : "cursor-pointer text-blue-400 hover:text-blue-300"
               }`}
             >
               {shareStatus ?? "Copy share link"}
@@ -642,7 +642,7 @@ function App() {
             <button
               type="button"
               onClick={triggerFilePicker}
-              className="text-xs font-medium text-accent hover:text-text-primary cursor-pointer uppercase tracking-wider"
+              className="cursor-pointer font-medium text-accent text-xs uppercase tracking-wider hover:text-text-primary"
             >
               + Add files
             </button>
@@ -651,13 +651,13 @@ function App() {
 
         {/* Error bar */}
         {error && (
-          <div className="px-4 py-1.5 bg-diff-negative/10 border-b border-diff-negative/30 text-diff-negative text-xs">
+          <div className="border-diff-negative/30 border-b bg-diff-negative/10 px-4 py-1.5 text-diff-negative text-xs">
             {error}
           </div>
         )}
 
         {/* Table */}
-        <div className="flex-1 min-h-0 p-4">
+        <div className="min-h-0 flex-1 p-4">
           <div className="h-full overflow-auto">
             {comparison ? (
               <ComparisonTable
@@ -671,8 +671,8 @@ function App() {
                 onStartEdit={handleStartEdit}
               />
             ) : (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-xs uppercase tracking-wider text-text-muted">
+              <div className="flex h-full items-center justify-center">
+                <p className="text-text-muted text-xs uppercase tracking-wider">
                   Check setups in the sidebar to compare
                 </p>
               </div>

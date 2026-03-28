@@ -127,7 +127,7 @@ export function ComparisonTable({
         >
           <div
             ref={paramColRef}
-            className="sticky left-0 z-20 bg-elevated p-2 border border-border text-[10px] uppercase tracking-widest text-text-muted font-medium"
+            className="sticky left-0 z-20 border border-border bg-elevated p-2 font-medium text-[10px] text-text-muted uppercase tracking-widest"
           >
             Parameter
           </div>
@@ -138,7 +138,7 @@ export function ComparisonTable({
                   key={i}
                   role="columnheader"
                   tabIndex={0}
-                  className="p-2 border border-border bg-accent/5 whitespace-nowrap"
+                  className="whitespace-nowrap border border-border bg-accent/5 p-2"
                 >
                   <EditColumnHeader
                     name={name}
@@ -188,7 +188,7 @@ export function ComparisonTable({
                 onDrop={handleDrop}
                 onDragEnd={clearDragState}
                 className={clsx(
-                  "p-2 border whitespace-nowrap cursor-grab",
+                  "cursor-grab whitespace-nowrap border p-2",
                   i === diffRefIndex ? "border-border border-t-2 border-t-accent" : "border-border",
                   i === 0 && "sticky left-[var(--param-w)] z-20 bg-elevated",
                   dragIndex !== null && dragIndex !== i && "opacity-50",
@@ -283,14 +283,14 @@ function Section({
       <div
         role="button"
         tabIndex={0}
-        className="sticky top-[37px] z-[8] bg-elevated hover:bg-[#2e2e28] cursor-pointer select-none border border-border"
+        className="sticky top-[37px] z-[8] cursor-pointer select-none border border-border bg-elevated hover:bg-[#2e2e28]"
         style={{ gridColumn: `span ${colCount}` }}
         onClick={onToggle}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") onToggle();
         }}
       >
-        <div className="sticky left-0 w-fit p-2 border-l-accent uppercase tracking-wider text-xs font-medium text-text-primary whitespace-nowrap">
+        <div className="sticky left-0 w-fit whitespace-nowrap border-l-accent p-2 font-medium text-text-primary text-xs uppercase tracking-wider">
           <span className="mr-2 inline-block w-4 text-center text-accent">
             {isCollapsed ? "+" : "\u2212"}
           </span>
@@ -317,7 +317,7 @@ function Section({
             >
               <div
                 className={clsx(
-                  "sticky left-0 z-[2] bg-base group-hover:bg-elevated p-2 border border-border text-text-secondary whitespace-nowrap",
+                  "sticky left-0 z-[2] whitespace-nowrap border border-border bg-base p-2 text-text-secondary group-hover:bg-elevated",
                 )}
               >
                 {row.key}
@@ -419,7 +419,7 @@ function Section({
                         data-col={i}
                         data-testid={`edit-cell-${section.sectionName}-${row.key}`}
                         className={clsx(
-                          "p-2 border whitespace-nowrap cursor-text",
+                          "cursor-text whitespace-nowrap border",
                           isEdited ? "border-accent/40" : "border-border",
                           ratios && "relative",
                           ratios && "z-[1]",
@@ -443,7 +443,7 @@ function Section({
                           {editDiffSpan}
                         </EditableCell>
                         {ratios && (
-                          <span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-[3] bg-base px-1 text-[11px] leading-none text-text-muted whitespace-nowrap">
+                          <span className="absolute bottom-0 left-1/2 z-[3] -translate-x-1/2 translate-y-1/2 whitespace-nowrap bg-base px-1 text-[11px] text-text-muted leading-none">
                             {ratios[i] ?? "\u2014"}
                           </span>
                         )}
@@ -486,7 +486,7 @@ function Section({
                       key={i}
                       data-col={i}
                       className={clsx(
-                        "p-2 border border-border whitespace-nowrap",
+                        "whitespace-nowrap border border-border p-2",
                         ratios && "relative",
                         ratios && (i === 0 ? "z-[3]" : "z-[1]"),
                         cellColor,
@@ -512,7 +512,7 @@ function Section({
                         </>
                       )}
                       {ratios && (
-                        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-[3] bg-base px-1 text-[11px] leading-none text-text-muted whitespace-nowrap">
+                        <span className="absolute bottom-0 left-1/2 z-[3] -translate-x-1/2 translate-y-1/2 whitespace-nowrap bg-base px-1 text-[11px] text-text-muted leading-none">
                           {ratios[i] ?? "\u2014"}
                         </span>
                       )}

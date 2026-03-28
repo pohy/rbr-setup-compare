@@ -17,7 +17,10 @@
       "recommended": true,
       "style": { "noNonNullAssertion": "error" },
       "suspicious": { "noArrayIndexKey": "warn" },
-      "a11y": { "useSemanticElements": "off" }
+      "a11y": { "useSemanticElements": "off" },
+      "nursery": {
+        "useSortedClasses": "error"
+      }
     }
   },
   "css": {

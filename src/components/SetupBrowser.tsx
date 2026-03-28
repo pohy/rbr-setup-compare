@@ -56,9 +56,9 @@ export function SetupBrowser({
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="shrink-0 w-10 bg-surface border-r border-border flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-elevated transition-colors"
+        className="flex w-10 shrink-0 cursor-pointer flex-col items-center justify-center gap-2 border-border border-r bg-surface transition-colors hover:bg-elevated"
       >
-        <span className="text-[10px] uppercase tracking-widest text-text-muted font-medium [writing-mode:vertical-lr] rotate-180 select-none">
+        <span className="rotate-180 select-none font-medium text-[10px] text-text-muted uppercase tracking-widest [writing-mode:vertical-lr]">
           Setups
         </span>
         <span className="text-text-muted text-xs">&#x25B6;</span>
@@ -68,28 +68,28 @@ export function SetupBrowser({
 
   // Expanded state
   return (
-    <div className="shrink-0 w-80 bg-surface border-r border-border flex flex-col h-full overflow-hidden">
+    <div className="flex h-full w-80 shrink-0 flex-col overflow-hidden border-border border-r bg-surface">
       {/* Header */}
       <button
         type="button"
         onClick={() => setExpanded(false)}
-        className="flex items-center justify-between px-3 py-2 border-b border-border cursor-pointer hover:bg-elevated transition-colors w-full"
+        className="flex w-full cursor-pointer items-center justify-between border-border border-b px-3 py-2 transition-colors hover:bg-elevated"
       >
-        <span className="text-[10px] uppercase tracking-widest text-text-muted font-medium select-none">
+        <span className="select-none font-medium text-[10px] text-text-muted uppercase tracking-widest">
           Setups
         </span>
         <span className="text-text-muted text-xs">&#x25C0;</span>
       </button>
 
       {/* Search */}
-      <div className="px-3 py-2 border-b border-border relative">
+      <div className="relative border-border border-b px-3 py-2">
         <input
           ref={filterRef}
           type="text"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Filter cars / files..."
-          className="w-full bg-base border border-border px-2 py-1 pr-6 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+          className="w-full border border-border bg-base px-2 py-1 pr-6 text-text-primary text-xs placeholder:text-text-muted focus:border-accent focus:outline-none"
         />
         {filter && (
           <button
@@ -98,7 +98,7 @@ export function SetupBrowser({
               setFilter("");
               filterRef.current?.focus();
             }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs leading-none p-0.5 cursor-pointer"
+            className="absolute top-1/2 right-4 -translate-y-1/2 cursor-pointer p-0.5 text-text-muted text-xs leading-none hover:text-text-primary"
             aria-label="Clear filter"
           >
             &#x2715;
@@ -109,12 +109,12 @@ export function SetupBrowser({
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {isScanning && (
-          <div className="px-3 py-4 text-xs text-text-muted uppercase tracking-wider">
+          <div className="px-3 py-4 text-text-muted text-xs uppercase tracking-wider">
             Scanning...
           </div>
         )}
 
-        {error && <div className="px-3 py-3 text-xs text-diff-negative">{error}</div>}
+        {error && <div className="px-3 py-3 text-diff-negative text-xs">{error}</div>}
 
         {!isScanning &&
           !error &&
@@ -123,20 +123,20 @@ export function SetupBrowser({
             const groupLoaded = group.setups.filter((s) => loadedPaths.has(s.relativePath)).length;
 
             return (
-              <div key={group.carName} className="border-b border-border">
+              <div key={group.carName} className="border-border border-b">
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.carName)}
-                  className="w-full text-left px-3 py-1.5 text-[11px] uppercase tracking-wider font-medium text-text-primary hover:bg-elevated cursor-pointer flex items-center justify-between"
+                  className="flex w-full cursor-pointer items-center justify-between px-3 py-1.5 text-left font-medium text-[11px] text-text-primary uppercase tracking-wider hover:bg-elevated"
                 >
                   <span className="truncate">
-                    <span className="inline-block w-4 text-center text-accent mr-1">
+                    <span className="mr-1 inline-block w-4 text-center text-accent">
                       {isCollapsed ? "+" : "\u2212"}
                     </span>
                     {group.carName}
                   </span>
                   {groupLoaded > 0 && (
-                    <span className="text-accent-dim text-[10px] ml-2 shrink-0">{groupLoaded}</span>
+                    <span className="ml-2 shrink-0 text-[10px] text-accent-dim">{groupLoaded}</span>
                   )}
                 </button>
                 {!isCollapsed && (
@@ -150,7 +150,7 @@ export function SetupBrowser({
                           className={clsx(
                             "flex items-center gap-2 px-3 py-0.5 text-xs",
                             isLoadingThis
-                              ? "opacity-50 cursor-wait"
+                              ? "cursor-wait opacity-50"
                               : "cursor-pointer hover:bg-elevated/50",
                           )}
                         >
@@ -159,7 +159,7 @@ export function SetupBrowser({
                             checked={isLoaded}
                             disabled={isLoadingThis}
                             onChange={() => onToggleSetup(setup, isLoaded)}
-                            className="accent-accent cursor-pointer shrink-0"
+                            className="shrink-0 cursor-pointer accent-accent"
                           />
                           <span
                             className={clsx(
@@ -183,18 +183,18 @@ export function SetupBrowser({
       </div>
 
       {/* Footer */}
-      <div className="border-t border-border px-3 py-2 flex gap-2">
+      <div className="flex gap-2 border-border border-t px-3 py-2">
         <button
           type="button"
           onClick={onChangeFolder}
-          className="flex-1 py-1 text-[10px] uppercase tracking-wider text-text-muted hover:text-text-secondary cursor-pointer"
+          className="flex-1 cursor-pointer py-1 text-[10px] text-text-muted uppercase tracking-wider hover:text-text-secondary"
         >
           Change folder
         </button>
         <button
           type="button"
           onClick={onDisconnect}
-          className="flex-1 py-1 text-[10px] uppercase tracking-wider text-text-muted hover:text-text-secondary cursor-pointer"
+          className="flex-1 cursor-pointer py-1 text-[10px] text-text-muted uppercase tracking-wider hover:text-text-secondary"
         >
           Disconnect
         </button>
