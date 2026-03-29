@@ -227,6 +227,40 @@ describe("ComparisonTable header accent border", () => {
   });
 });
 
+describe("ComparisonTable diff decimal precision", () => {
+  it("uses edit column precision for diff when it is the most granular", () => {
+    const result: ComparisonResult = [
+      {
+        sectionName: "VehicleControlUnit",
+        rows: [
+          { type: "data", key: "RearDiffThrottle_00", values: [0.4, 0.6, 0.45], isDifferent: true },
+        ],
+      },
+    ];
+
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1", "setup2", "edited"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        editConfig={makeEditConfig({
+          diffRefIndex: 0,
+          canToggleDiffMode: false,
+          columnIndex: 2,
+          diffMode: "vs-original",
+        })}
+      />,
+    );
+
+    // diff = 0.45 - 0.4 = 0.05, must show with 2 decimal places
+    const editCol = screen.getByTestId("edit-cell-VehicleControlUnit-RearDiffThrottle_00");
+    expect(editCol.textContent).toContain("0.05");
+  });
+});
+
 describe("ComparisonTable single-setup edge case", () => {
   it("diffs against column 0 when only one setup loaded", () => {
     const result: ComparisonResult = [
