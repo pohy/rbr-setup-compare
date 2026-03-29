@@ -326,8 +326,7 @@ function Section({
                 const unit = row.unit ? ` ${row.unit}` : "";
                 const maxDecimals = Math.max(
                   0,
-                  ...row.values.map((v, i) => {
-                    if (editConfig != null && i === editConfig.columnIndex) return 0;
+                  ...row.values.map((v) => {
                     const s = String(v);
                     return s.includes(".") ? s.split(".")[1].length : 0;
                   }),
