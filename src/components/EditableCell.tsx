@@ -1,15 +1,18 @@
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RangeTriplet } from "../lib/range-parser.ts";
+import { stepDraft } from "../lib/step-draft.ts";
 
 type Props = {
   value: number | string | null;
   unit?: string;
   range?: RangeTriplet;
+  fallbackStep?: number;
+  refValue?: number;
+  maxDecimals?: number;
   onCommit: (value: string) => void;
   onReset?: () => void;
   onStep?: (direction: 1 | -1, fine: boolean) => void;
-  children?: React.ReactNode;
 };
 
 const DRAG_ENTER_THRESHOLD = 2;
@@ -17,15 +20,28 @@ const DRAG_STEP_THRESHOLD = 3;
 
 type HoverZone = "left" | "center" | "right";
 
-export function EditableCell({ value, unit, range, onCommit, onReset, onStep, children }: Props) {
+export function EditableCell({
+  value,
+  unit,
+  range,
+  fallbackStep,
+  refValue,
+  maxDecimals,
+  onCommit,
+  onReset,
+  onStep,
+}: Props) {
   const [editing, setEditing] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [hoverZone, setHoverZone] = useState<HoverZone | null>(null);
   const cellRef = useRef<HTMLDivElement>(null);
+  const lastValidDiffRef = useRef<number | null>(null);
+  const lastValidFillRef = useRef<number | null>(null);
 
   const startEditing = useCallback(() => {
     const displayVal = value !== null ? String(value) : "";
     setInputValue(displayVal);
+    setHoverZone(null);
     setEditing(true);
   }, [value]);
 
@@ -129,6 +145,49 @@ export function EditableCell({ value, unit, range, onCommit, onReset, onStep, ch
         ? "cursor-pointer"
         : "cursor-ew-resize";
 
+  // Compute range fill (progress bar)
+  const { fillPct, staleFill } = (() => {
+    if (!range) return { fillPct: null, staleFill: false };
+
+    const currentNum = editing ? parseFloat(inputValue) : Number(value);
+    const validNum = !Number.isNaN(currentNum);
+
+    if (validNum) {
+      const pct = ((currentNum - range.min) / (range.max - range.min)) * 100;
+      lastValidFillRef.current = pct;
+      return { fillPct: pct, staleFill: false };
+    }
+
+    return { fillPct: lastValidFillRef.current, staleFill: true };
+  })();
+
+  const fillStyle =
+    fillPct !== null
+      ? {
+          background: `linear-gradient(to right, oklch(0.7 0.15 85 / ${staleFill ? 0.05 : 0.12}) ${fillPct}%, transparent ${fillPct}%)`,
+        }
+      : undefined;
+
+  // Compute diff against reference value
+  const { diffNode, stale } = (() => {
+    if (refValue == null || Number.isNaN(refValue)) return { diffNode: null, stale: false };
+
+    const currentNum = editing ? parseFloat(inputValue) : Number(value);
+    const validNum = !Number.isNaN(currentNum);
+
+    if (validNum) {
+      const diff = currentNum - refValue;
+      lastValidDiffRef.current = diff;
+      if (Math.abs(diff) < 0.0001) return { diffNode: null, stale: false };
+      return { diffNode: formatDiffSpan(diff, maxDecimals ?? 0, unitSuffix), stale: false };
+    }
+
+    // Non-numeric input: show last valid diff dimmed
+    const lastDiff = lastValidDiffRef.current;
+    if (lastDiff == null || Math.abs(lastDiff) < 0.0001) return { diffNode: null, stale: false };
+    return { diffNode: formatDiffSpan(lastDiff, maxDecimals ?? 0, unitSuffix), stale: true };
+  })();
+
   return (
     <div
       ref={cellRef}
@@ -142,30 +201,64 @@ export function EditableCell({ value, unit, range, onCommit, onReset, onStep, ch
       onMouseDown={onStep ? handleMouseDown : undefined}
       onMouseMove={onStep && !editing ? handleHoverMove : undefined}
       onMouseLeave={onStep && !editing ? handleHoverLeave : undefined}
+      onFocus={() => {
+        if (!editing) startEditing();
+      }}
       onKeyDown={(e) => {
         if (!editing && (e.key === "Enter" || e.key === " ")) startEditing();
       }}
       role="button"
-      tabIndex={0}
+      tabIndex={editing ? -1 : 0}
       title={titleText}
       className={clsx("relative h-full select-none", cursorClass)}
+      style={fillStyle}
     >
+      {staleFill && <span data-stale-fill hidden />}
       {onStep && !editing && hoverZone && <ZoneHint zone={hoverZone} />}
       <span
         className={clsx("relative z-[1] flex justify-between gap-2 p-2", editing && "invisible")}
       >
         <span>{displayText}</span>
-        {children}
       </span>
+      {diffNode && (
+        <span
+          className={clsx(
+            "pointer-events-none absolute top-1/2 right-2 z-[2] -translate-y-1/2",
+            stale && "opacity-40",
+          )}
+          {...(stale ? { "data-stale-diff": true } : {})}
+        >
+          {diffNode}
+        </span>
+      )}
       {editing && (
         <CellInput
           value={inputValue}
           onChange={setInputValue}
           onCommit={handleCommit}
           onCancel={handleCancel}
+          range={range}
+          fallbackStep={fallbackStep}
         />
       )}
     </div>
+  );
+}
+
+function formatDiffSpan(diff: number, maxDecimals: number, unitSuffix: string) {
+  const formatted = diff
+    .toLocaleString("cs-CZ", {
+      minimumFractionDigits: maxDecimals,
+      maximumFractionDigits: maxDecimals,
+    })
+    .replace(",", ".");
+  const cls = diff > 0 ? "text-diff-positive" : "text-diff-negative";
+  return (
+    <span className={cls}>
+      ({diff > 0 ? "+" : ""}
+      {formatted}
+      {unitSuffix})
+    </span>
   );
 }
 
@@ -252,11 +345,15 @@ function CellInput({
   onChange,
   onCommit,
   onCancel,
+  range,
+  fallbackStep,
 }: {
   value: string;
   onChange: (value: string) => void;
   onCommit: (trimmed: string) => void;
   onCancel: () => void;
+  range?: RangeTriplet;
+  fallbackStep?: number;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -275,9 +372,17 @@ function CellInput({
       } else if (e.key === "Escape") {
         e.preventDefault();
         onCancel();
+      } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.preventDefault();
+        const direction: 1 | -1 = e.key === "ArrowUp" ? 1 : -1;
+        const result = stepDraft(value, direction, e.shiftKey, range, fallbackStep);
+        if (result !== null) {
+          onChange(result);
+          requestAnimationFrame(() => inputRef.current?.select());
+        }
       }
     },
-    [value, onCommit, onCancel],
+    [value, onCommit, onCancel, range, fallbackStep, onChange],
   );
 
   return (
@@ -288,6 +393,7 @@ function CellInput({
       onChange={(e) => onChange(e.target.value)}
       onBlur={() => onCommit(value.trim())}
       onKeyDown={handleKeyDown}
+      autoComplete="off"
       className="absolute inset-0 border-accent/60 border-b bg-transparent p-2 text-sm text-text-primary outline-none"
     />
   );
