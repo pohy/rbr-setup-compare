@@ -219,18 +219,15 @@ export function EditableCell({
         className={clsx("relative z-[1] flex justify-between gap-2 p-2", editing && "invisible")}
       >
         <span>{displayText}</span>
+        {diffNode && (
+          <span
+            className={clsx("pointer-events-none shrink-0", stale && "opacity-40")}
+            {...(stale ? { "data-stale-diff": true } : {})}
+          >
+            {diffNode}
+          </span>
+        )}
       </span>
-      {diffNode && (
-        <span
-          className={clsx(
-            "pointer-events-none absolute top-1/2 right-2 z-[2] -translate-y-1/2",
-            stale && "opacity-40",
-          )}
-          {...(stale ? { "data-stale-diff": true } : {})}
-        >
-          {diffNode}
-        </span>
-      )}
       {editing && (
         <CellInput
           value={inputValue}

@@ -425,6 +425,19 @@ describe("EditableCell diff display", () => {
     expect(cell).toHaveTextContent(/\+10/);
   });
 
+  it("renders diff inside the value flex container, not absolutely positioned", () => {
+    const cell = renderWithDiff(55, 50);
+    const diffEl = cell.querySelector(".text-diff-positive, .text-diff-negative");
+    expect(diffEl).toBeInTheDocument();
+    // The diff wrapper must NOT be absolutely positioned (causes overlap with value)
+    const diffWrapper = diffEl!.parentElement!;
+    expect(diffWrapper.className).not.toContain("absolute");
+    // Value and diff should be siblings inside the same flex container
+    const valueSpan = cell.querySelector("span.flex");
+    expect(valueSpan).toBeInTheDocument();
+    expect(diffWrapper.closest(".flex")).toBe(valueSpan);
+  });
+
   it("dims diff when input is non-numeric", () => {
     const input = openInputWithDiff(55, 50);
     fireEvent.change(input, { target: { value: "abc" } });
