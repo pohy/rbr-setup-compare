@@ -137,7 +137,7 @@ export function ComparisonTable({
                 <div
                   key={i}
                   role="columnheader"
-                  tabIndex={0}
+                  tabIndex={-1}
                   className="whitespace-nowrap border border-border bg-accent/5 p-2"
                 >
                   <EditColumnHeader
@@ -160,7 +160,7 @@ export function ComparisonTable({
               <div
                 key={i}
                 role="columnheader"
-                tabIndex={0}
+                tabIndex={-1}
                 draggable
                 onDragStart={(e) => {
                   setDragIndex(i);
@@ -282,7 +282,7 @@ function Section({
       {/* Section header */}
       <div
         role="button"
-        tabIndex={0}
+        tabIndex={-1}
         className="sticky top-[37px] z-[8] cursor-pointer select-none border border-border bg-elevated hover:bg-[#2e2e28]"
         style={{ gridColumn: `span ${colCount}` }}
         onClick={onToggle}
@@ -351,13 +351,6 @@ function Section({
                   const numRef = ref !== null ? Number(ref) : NaN;
                   const bothNumeric = i > 0 && !Number.isNaN(numVal) && !Number.isNaN(numRef);
                   const diff = bothNumeric ? numVal - numRef : 0;
-                  const cellDiffers =
-                    i === 0
-                      ? false
-                      : bothNumeric
-                        ? Math.abs(diff) >= 0.0001
-                        : (val === null) !== (ref === null) ||
-                          (val !== null && ref !== null && String(val) !== String(ref));
                   const decimals = String(val).includes(".") ? String(val).split(".")[1].length : 0;
                   const fmtVal = (n: number) =>
                     n
@@ -389,30 +382,6 @@ function Section({
                       }
                     }
 
-                    const fillPct =
-                      displayRange && !Number.isNaN(numVal)
-                        ? ((numVal - displayRange.min) / (displayRange.max - displayRange.min)) *
-                          100
-                        : null;
-                    const fillStyle =
-                      fillPct !== null
-                        ? {
-                            background: `linear-gradient(to right, oklch(0.7 0.15 85 / 0.12) ${fillPct}%, transparent ${fillPct}%)`,
-                          }
-                        : undefined;
-
-                    let editDiffSpan: React.ReactNode = null;
-                    if (cellDiffers && bothNumeric && diff !== 0) {
-                      const cls = diff > 0 ? "text-diff-positive" : "text-diff-negative";
-                      editDiffSpan = (
-                        <span className={cls}>
-                          {" "}
-                          ({fmtDiff(diff)}
-                          {unit})
-                        </span>
-                      );
-                    }
-
                     return (
                       <div
                         key={i}
@@ -424,12 +393,27 @@ function Section({
                           ratios && "relative",
                           ratios && "z-[1]",
                         )}
-                        style={fillStyle}
                       >
                         <EditableCell
                           value={val}
                           unit={row.unit}
                           range={displayRange}
+                          fallbackStep={
+                            displayRange
+                              ? undefined
+                              : (() => {
+                                  let maxDec = 0;
+                                  for (const v of row.values) {
+                                    if (v === null) continue;
+                                    const s = String(v);
+                                    const d = s.includes(".") ? s.split(".")[1].length : 0;
+                                    if (d > maxDec) maxDec = d;
+                                  }
+                                  return 10 ** -maxDec;
+                                })()
+                          }
+                          refValue={numRef}
+                          maxDecimals={maxDecimals}
                           onCommit={(displayValue) => {
                             editConfig?.onCellEdit(section.sectionName, row.key, displayValue);
                           }}
@@ -439,9 +423,7 @@ function Section({
                           onStep={(direction, fine) =>
                             editConfig?.onStep(section.sectionName, row.key, direction, fine)
                           }
-                        >
-                          {editDiffSpan}
-                        </EditableCell>
+                        />
                         {ratios && (
                           <span className="absolute bottom-0 left-1/2 z-[3] -translate-x-1/2 translate-y-1/2 whitespace-nowrap bg-base px-1 text-[11px] text-text-muted leading-none">
                             {ratios[i] ?? "\u2014"}
