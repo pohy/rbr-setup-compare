@@ -38,8 +38,11 @@ type FileSystemObserverCallback = (
   observer: FileSystemObserver,
 ) => void;
 
-declare class FileSystemObserver {
-  constructor(callback: FileSystemObserverCallback);
+interface FileSystemObserver {
   observe(handle: FileSystemHandle, options?: { recursive?: boolean }): Promise<void>;
   disconnect(): void;
 }
+
+declare var FileSystemObserver:
+  | { new (callback: FileSystemObserverCallback): FileSystemObserver }
+  | undefined;

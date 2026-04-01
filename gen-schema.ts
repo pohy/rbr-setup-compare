@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/suspicious/noTemplateCurlyInString: We're constructing JS in here */
+
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { parseLspSetup } from "./src/lib/lsp-parser.ts";

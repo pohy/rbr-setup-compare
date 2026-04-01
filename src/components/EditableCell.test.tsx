@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ComponentProps } from "react";
+import type { Mock } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditableCell } from "./EditableCell.tsx";
 
@@ -84,8 +87,9 @@ describe("EditableCell click-to-step (three-zone)", () => {
   const RANGE = { min: 0, max: 100, step: 1 };
 
   /** Render with onStep and mock cell bounding rect at x=0..300 (thirds at 100, 200). */
-  function renderSteppable(overrides?: { value?: number; onStep?: ReturnType<typeof vi.fn> }) {
-    const onStep = overrides?.onStep ?? vi.fn();
+  type OnStep = NonNullable<ComponentProps<typeof EditableCell>["onStep"]>;
+  function renderSteppable(overrides?: { value?: number; onStep?: Mock<OnStep> }) {
+    const onStep = overrides?.onStep ?? vi.fn<OnStep>();
     const result = render(
       <EditableCell
         value={overrides?.value ?? 50}
@@ -430,12 +434,12 @@ describe("EditableCell diff display", () => {
     const diffEl = cell.querySelector(".text-diff-positive, .text-diff-negative");
     expect(diffEl).toBeInTheDocument();
     // The diff wrapper must NOT be absolutely positioned (causes overlap with value)
-    const diffWrapper = diffEl!.parentElement!;
-    expect(diffWrapper.className).not.toContain("absolute");
+    const diffWrapper = diffEl?.parentElement;
+    expect(diffWrapper?.className).not.toContain("absolute");
     // Value and diff should be siblings inside the same flex container
     const valueSpan = cell.querySelector("span.flex");
     expect(valueSpan).toBeInTheDocument();
-    expect(diffWrapper.closest(".flex")).toBe(valueSpan);
+    expect(diffWrapper?.closest(".flex")).toBe(valueSpan);
   });
 
   it("dims diff when input is non-numeric", () => {
