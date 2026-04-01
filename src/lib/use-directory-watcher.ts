@@ -18,7 +18,7 @@ export function useDirectoryWatcher(options: DirectoryWatcherOptions): void {
 
   useEffect(() => {
     if (!enabled || !directoryHandle) return;
-    if (typeof globalThis.FileSystemObserver === "undefined") return;
+    if (typeof FileSystemObserver === "undefined") return;
 
     // Capture handle for use inside closures (narrowed from the guard above)
     const handle = directoryHandle;

@@ -102,6 +102,16 @@ describe("processRecords", () => {
     expect(processRecords([])).toEqual([]);
   });
 
+  it("throws on unhandled record type", () => {
+    const records = [
+      makeRecord({
+        type: "brand_new_type" as FileSystemChangeRecord["type"],
+        relativePathComponents: ["setups", "a.lsp"],
+      }),
+    ];
+    expect(() => processRecords(records)).toThrow("brand_new_type");
+  });
+
   it("handles moved record where only the new path is .lsp", () => {
     const records = [
       makeRecord({
@@ -155,6 +165,16 @@ describe("hasLspChanges", () => {
       makeRecord({ type: "errored", relativePathComponents: ["setups", "b.lsp"] }),
     ];
     expect(hasLspChanges(records)).toBe(false);
+  });
+
+  it("throws on unhandled record type", () => {
+    const records = [
+      makeRecord({
+        type: "brand_new_type" as FileSystemChangeRecord["type"],
+        relativePathComponents: ["setups", "a.lsp"],
+      }),
+    ];
+    expect(() => hasLspChanges(records)).toThrow("brand_new_type");
   });
 
   it("returns true for moved .lsp files", () => {
