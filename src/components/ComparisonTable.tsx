@@ -37,7 +37,7 @@ export type EditConfig = {
 
 type Props = {
   result: ComparisonResult;
-  setupNames: string[];
+  setupNames: readonly string[];
   onRemoveSetup: (index: number) => void;
   onSaveSetup: (index: number) => void;
   onReorderSetup: (from: number, to: number) => void;
@@ -112,7 +112,6 @@ export function ComparisonTable({
   );
 
   const dataColCount = setupNames.length + 1;
-  const colCount = dataColCount + (editConfig ? 1 : 0);
   const isEditColumn = (i: number) => editConfig != null && i === editConfig.columnIndex;
   const diffRefIndex = editConfig?.diffRefIndex ?? -1;
 
