@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getLabel } from "./label-map.ts";
+import { getLabel, getSectionLabel } from "./label-map.ts";
 
 describe("getLabel", () => {
   it("returns mapped label for a direct key", () => {
@@ -16,5 +16,18 @@ describe("getLabel", () => {
 
   it("falls back to raw key when unmapped", () => {
     expect(getLabel("SomeUnknownKey")).toBe("SomeUnknownKey");
+  });
+});
+
+describe("getSectionLabel", () => {
+  it("returns mapped label for a known section", () => {
+    expect(getSectionLabel("VehicleControlUnit")).toBe("Differential Maps");
+    expect(getSectionLabel("WheelFront")).toBe("Suspension (Front)");
+    expect(getSectionLabel("SpringDamperBack")).toBe("Springs & Dampers (Rear)");
+  });
+
+  it("falls back to raw section name when unmapped", () => {
+    expect(getSectionLabel("Drive")).toBe("Drive");
+    expect(getSectionLabel("UnknownSection")).toBe("UnknownSection");
   });
 });

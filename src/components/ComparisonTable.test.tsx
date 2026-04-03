@@ -265,6 +265,48 @@ describe("ComparisonTable diff decimal precision", () => {
   });
 });
 
+describe("ComparisonTable diffs-only keeps row while editing", () => {
+  const sharedProps = {
+    setupNames: ["setup1", "setup2", "edited"],
+    onRemoveSetup: noop,
+    onSaveSetup: noop,
+    onReorderSetup: noop,
+    diffsOnly: true,
+    editConfig: makeEditConfig({ columnIndex: 2, diffRefIndex: 0, diffMode: "vs-original" }),
+  } as const;
+
+  it("keeps row visible when isDifferent becomes false while cell is being edited", () => {
+    const diffResult: ComparisonResult = [
+      {
+        sectionName: "Engine",
+        rows: [{ type: "data", key: "Power", values: [100, 100, 120], isDifferent: true }],
+      },
+    ];
+
+    const { rerender } = render(<ComparisonTable result={diffResult} {...sharedProps} />);
+
+    // Row is visible, enter edit mode on the edit cell
+    const editCellWrapper = screen.getByTestId("edit-cell-Engine-Power");
+    const cell = editCellWrapper.querySelector("[role=button]") as HTMLElement;
+    fireEvent.focus(cell);
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+
+    // Simulate reset: values now match, isDifferent=false
+    const noDiffResult: ComparisonResult = [
+      {
+        sectionName: "Engine",
+        rows: [{ type: "data", key: "Power", values: [100, 100, 100], isDifferent: false }],
+      },
+    ];
+
+    rerender(<ComparisonTable result={noDiffResult} {...sharedProps} />);
+
+    // Row should still be visible because the cell is being edited
+    expect(screen.getByTestId("edit-cell-Engine-Power")).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+  });
+});
+
 describe("ComparisonTable single-setup edge case", () => {
   it("diffs against column 0 when only one setup loaded", () => {
     const result: ComparisonResult = [
