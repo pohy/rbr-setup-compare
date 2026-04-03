@@ -81,6 +81,18 @@ const INDEXED_LABEL_MAP: Record<string, string> = {
   RearDiffBrake: "Rear Brake Lock",
 };
 
+/** Sanitized section name → in-game editor page label */
+const SECTION_LABEL_MAP: Record<string, string> = {
+  Car: "Steering / Roll Bars",
+  WheelFront: "Suspension (Front)",
+  WheelBack: "Suspension (Rear)",
+  SpringDamperFront: "Springs & Dampers (Front)",
+  SpringDamperBack: "Springs & Dampers (Rear)",
+  TyreFront: "Tyres (Front)",
+  TyreBack: "Tyres (Rear)",
+  VehicleControlUnit: "Differential Maps",
+};
+
 const INDEXED_SUFFIX = /^(.+)_(\d{2})$/;
 
 export function getLabel(key: string): string {
@@ -98,4 +110,8 @@ export function getLabel(key: string): string {
   }
 
   return key;
+}
+
+export function getSectionLabel(section: string): string {
+  return SECTION_LABEL_MAP[section] ?? section;
 }

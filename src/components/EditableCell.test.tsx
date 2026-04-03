@@ -84,6 +84,121 @@ describe("EditableCell", () => {
   });
 });
 
+describe("EditableCell reset button", () => {
+  it("does not show reset button in edit mode when isEdited is false", () => {
+    const onReset = vi.fn();
+    render(<EditableCell value={50} unit="kN/m" onCommit={() => {}} onReset={onReset} />);
+    fireEvent.click(screen.getByRole("button"));
+    expect(screen.queryByTitle("Reset")).not.toBeInTheDocument();
+  });
+
+  it("renders reset button in DOM when isEdited even without hover", () => {
+    render(<EditableCell value={50} unit="kN/m" isEdited onCommit={() => {}} onReset={() => {}} />);
+    const btn = screen.getByTitle("Reset");
+    expect(btn.className).toContain("opacity-0");
+    expect(btn.className).toContain("group-hover:opacity-100");
+  });
+
+  it("does not render reset button when not isEdited and not editing", () => {
+    render(<EditableCell value={50} unit="kN/m" onCommit={() => {}} onReset={() => {}} />);
+    expect(screen.queryByTitle("Reset")).not.toBeInTheDocument();
+  });
+
+  it("does not show reset button when onReset is not provided", () => {
+    render(<EditableCell value={50} unit="kN/m" isEdited onCommit={() => {}} />);
+    fireEvent.click(screen.getByRole("button"));
+    expect(screen.queryByTitle("Reset")).not.toBeInTheDocument();
+  });
+
+  it("shows reset button with full opacity in edit mode when isEdited", () => {
+    render(<EditableCell value={50} unit="kN/m" isEdited onCommit={() => {}} onReset={() => {}} />);
+    // Cell is first button, reset button is second
+    fireEvent.click(screen.getAllByRole("button")[0]);
+    const btn = screen.getByTitle("Reset");
+    expect(btn.className).toContain("opacity-100");
+    expect(btn.className).not.toContain("opacity-0");
+  });
+
+  it("calls onReset when reset button is clicked", () => {
+    const onReset = vi.fn();
+    render(<EditableCell value={50} unit="kN/m" isEdited onCommit={() => {}} onReset={onReset} />);
+    fireEvent.click(screen.getAllByRole("button")[0]);
+    fireEvent.click(screen.getByTitle("Reset"));
+    expect(onReset).toHaveBeenCalledOnce();
+  });
+
+  it("stays in edit mode after clicking reset", () => {
+    render(<EditableCell value={50} unit="kN/m" isEdited onCommit={() => {}} onReset={() => {}} />);
+    fireEvent.click(screen.getAllByRole("button")[0]);
+    fireEvent.click(screen.getByTitle("Reset"));
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+  });
+
+  it("does not call onCommit when reset button is clicked", () => {
+    const onCommit = vi.fn();
+    render(<EditableCell value={50} unit="kN/m" isEdited onCommit={onCommit} onReset={() => {}} />);
+    fireEvent.click(screen.getAllByRole("button")[0]);
+    fireEvent.click(screen.getByTitle("Reset"));
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it("Enter still commits when reset button is present", () => {
+    const onCommit = vi.fn();
+    render(<EditableCell value={50} unit="kN/m" isEdited onCommit={onCommit} onReset={() => {}} />);
+    fireEvent.click(screen.getAllByRole("button")[0]);
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "55" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onCommit).toHaveBeenCalledWith("55");
+  });
+
+  it("Escape still cancels when reset button is present", () => {
+    const onCommit = vi.fn();
+    render(<EditableCell value={50} unit="kN/m" isEdited onCommit={onCommit} onReset={() => {}} />);
+    fireEvent.click(screen.getAllByRole("button")[0]);
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(screen.getAllByRole("button")[0]).toHaveTextContent("50 kN/m");
+  });
+
+  it("shows reset button when draft differs from value even if isEdited is false", () => {
+    render(<EditableCell value={50} unit="kN/m" onCommit={() => {}} onReset={() => {}} />);
+    fireEvent.click(screen.getByRole("button"));
+    expect(screen.queryByTitle("Reset")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "55" } });
+    expect(screen.getByTitle("Reset")).toBeInTheDocument();
+  });
+
+  it("resets input value when clicking reset after typing without committing", () => {
+    const onReset = vi.fn();
+    render(<EditableCell value={50} unit="kN/m" onCommit={() => {}} onReset={onReset} />);
+    fireEvent.click(screen.getByRole("button"));
+    const input = screen.getByRole("textbox");
+
+    // Type a value (no commit), then reset
+    fireEvent.change(input, { target: { value: "55" } });
+    fireEvent.click(screen.getByTitle("Reset"));
+
+    // Input should revert to the prop value
+    expect(input).toHaveValue("50");
+
+    // Type again and reset a second time
+    fireEvent.change(input, { target: { value: "60" } });
+    fireEvent.click(screen.getByTitle("Reset"));
+    expect(input).toHaveValue("50");
+    expect(onReset).toHaveBeenCalledTimes(2);
+  });
+
+  it("hides reset button when draft matches value again", () => {
+    render(<EditableCell value={50} unit="kN/m" onCommit={() => {}} onReset={() => {}} />);
+    fireEvent.click(screen.getByRole("button"));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "55" } });
+    expect(screen.getByTitle("Reset")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "50" } });
+    expect(screen.queryByTitle("Reset")).not.toBeInTheDocument();
+  });
+});
+
 describe("EditableCell click-to-step (three-zone)", () => {
   const RANGE = { min: 0, max: 100, step: 1 };
 
@@ -421,6 +536,19 @@ describe("EditableCell diff display", () => {
     // Diff should be visible somewhere in the cell even during editing
     const cell = input.closest("[role=button]") as HTMLElement;
     expect(cell).toHaveTextContent(/\+5/);
+  });
+
+  it("diff is not hidden by invisible parent during editing", () => {
+    const input = openInputWithDiff(55, 50);
+    const cell = input.closest("[role=button]") as HTMLElement;
+    const diffEl = cell.querySelector(".text-diff-positive, .text-diff-negative");
+    expect(diffEl).toBeInTheDocument();
+    // Walk up from the diff element — no ancestor should be invisible
+    let el = diffEl?.parentElement;
+    while (el && el !== cell) {
+      expect(el.className).not.toContain("invisible");
+      el = el.parentElement;
+    }
   });
 
   it("updates diff as input value changes", () => {

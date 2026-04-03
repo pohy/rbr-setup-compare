@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComparisonResult } from "../lib/compare.ts";
-import { getLabel } from "../lib/label-map.ts";
+import { getLabel, getSectionLabel } from "../lib/label-map.ts";
 import type { RangeMap } from "../lib/range-mapping.ts";
 import type { RangeTriplet } from "../lib/range-parser.ts";
 import { getModifier, SECTION_RENAMES } from "../lib/sanitize.ts";
@@ -57,6 +57,7 @@ export function ComparisonTable({
   onStartEdit,
 }: Props) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [editingCell, setEditingCell] = useState<{ section: string; key: string } | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const dragIndexRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -110,7 +111,8 @@ export function ComparisonTable({
     [clearDragState],
   );
 
-  const colCount = setupNames.length + 1;
+  const dataColCount = setupNames.length + 1;
+  const colCount = dataColCount + (editConfig ? 1 : 0);
   const isEditColumn = (i: number) => editConfig != null && i === editConfig.columnIndex;
   const diffRefIndex = editConfig?.diffRefIndex ?? -1;
 
@@ -120,7 +122,7 @@ export function ComparisonTable({
         className="grid text-sm"
         style={
           {
-            gridTemplateColumns: `auto repeat(${setupNames.length}, auto)`,
+            gridTemplateColumns: `auto repeat(${setupNames.length}, auto)${editConfig ? " 2.5rem" : ""}`,
             "--param-w": `${paramColWidth}px`,
           } as React.CSSProperties
         }
@@ -128,7 +130,7 @@ export function ComparisonTable({
         {/* Header */}
         <div
           className="sticky top-0 z-10 grid grid-cols-subgrid bg-elevated text-text-secondary"
-          style={{ gridColumn: `span ${colCount}` }}
+          style={{ gridColumn: `span ${dataColCount}` }}
         >
           <div
             ref={paramColRef}
@@ -229,6 +231,8 @@ export function ComparisonTable({
 
         {/* Sections */}
         {result.map((section) => {
+          const isRowEditing = (key: string) =>
+            editingCell?.section === section.sectionName && editingCell?.key === key;
           const visibleRows = diffsOnly
             ? section.rows.filter((r, i, arr) => {
                 if (r.type === "split") {
@@ -236,12 +240,12 @@ export function ComparisonTable({
                   const next = arr[i + 1];
                   return (
                     prev?.type === "data" &&
-                    prev.isDifferent &&
+                    (prev.isDifferent || isRowEditing(prev.key)) &&
                     next?.type === "data" &&
-                    next.isDifferent
+                    (next.isDifferent || isRowEditing(next.key))
                   );
                 }
-                return r.isDifferent;
+                return r.isDifferent || isRowEditing(r.key);
               })
             : section.rows;
           if (diffsOnly && visibleRows.length === 0) {
@@ -252,11 +256,14 @@ export function ComparisonTable({
               key={section.sectionName}
               section={section}
               rows={visibleRows}
-              colCount={colCount}
+              dataColCount={dataColCount}
               isCollapsed={collapsed[section.sectionName] ?? false}
               onToggle={() => toggleSection(section.sectionName)}
               dragIndex={dragIndex}
               editConfig={editConfig}
+              onCellEditingChange={(s, key, editing) =>
+                setEditingCell(editing ? { section: s, key } : null)
+              }
             />
           );
         })}
@@ -268,30 +275,32 @@ export function ComparisonTable({
 function Section({
   section,
   rows,
-  colCount,
+  dataColCount,
   isCollapsed,
   onToggle,
   dragIndex,
   editConfig,
+  onCellEditingChange,
 }: {
   section: ComparisonResult[number];
   rows: ComparisonResult[number]["rows"];
-  colCount: number;
+  dataColCount: number;
   isCollapsed: boolean;
   onToggle: () => void;
   dragIndex: number | null;
   editConfig?: EditConfig;
+  onCellEditingChange?: (section: string, key: string, editing: boolean) => void;
 }) {
   const diffCount = section.rows.filter((r) => r.type === "data" && r.isDifferent).length;
 
   return (
-    <div className="grid grid-cols-subgrid" style={{ gridColumn: `span ${colCount}` }}>
+    <div className="grid grid-cols-subgrid" style={{ gridColumn: `span ${dataColCount}` }}>
       {/* Section header */}
       <div
         role="button"
         tabIndex={-1}
         className="sticky top-[37px] z-[8] cursor-pointer select-none border border-border bg-elevated hover:bg-[#2e2e28]"
-        style={{ gridColumn: `span ${colCount}` }}
+        style={{ gridColumn: `span ${dataColCount}` }}
         onClick={onToggle}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -303,7 +312,7 @@ function Section({
           <span className="mr-2 inline-block w-4 text-center text-accent">
             {isCollapsed ? "+" : "\u2212"}
           </span>
-          {section.sectionName}
+          <span title={section.sectionName}>{getSectionLabel(section.sectionName)}</span>
           {diffCount > 0 && (
             <span className="ml-2 text-accent-dim">
               {diffCount} diff{diffCount > 1 ? "s" : ""}
@@ -324,7 +333,7 @@ function Section({
             <div
               key={`${section.sectionName}-${row.key}`}
               className={clsx("group grid grid-cols-subgrid", "hover:bg-elevated/50")}
-              style={{ gridColumn: `span ${colCount}` }}
+              style={{ gridColumn: `span ${dataColCount}` }}
             >
               <div
                 title={row.key}
@@ -409,6 +418,7 @@ function Section({
                           value={val}
                           unit={row.unit}
                           range={displayRange}
+                          isEdited={isEdited}
                           fallbackStep={
                             displayRange
                               ? undefined
@@ -438,6 +448,9 @@ function Section({
                           onStep={(direction, fine) =>
                             editConfig?.onStep(section.sectionName, row.key, direction, fine)
                           }
+                          onEditingChange={(editing) => {
+                            onCellEditingChange?.(section.sectionName, row.key, editing);
+                          }}
                         />
                         {ratios && (
                           <span className="absolute bottom-0 left-1/2 z-[3] -translate-x-1/2 translate-y-1/2 whitespace-nowrap bg-base px-1 text-[11px] text-text-muted leading-none">

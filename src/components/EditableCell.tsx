@@ -10,9 +10,11 @@ type Props = {
   fallbackStep?: number;
   refValue?: number;
   maxDecimals?: number;
+  isEdited?: boolean;
   onCommit: (value: string) => void;
   onReset?: () => void;
   onStep?: (direction: 1 | -1, fine: boolean) => void;
+  onEditingChange?: (editing: boolean) => void;
 };
 
 const DRAG_ENTER_THRESHOLD = 2;
@@ -43,11 +45,19 @@ export function EditableCell({
   fallbackStep,
   refValue,
   maxDecimals,
+  isEdited,
   onCommit,
   onReset,
   onStep,
+  onEditingChange,
 }: Props) {
   const [editing, setEditing] = useState(false);
+
+  const onEditingChangeRef = useRef(onEditingChange);
+  onEditingChangeRef.current = onEditingChange;
+  useEffect(() => {
+    onEditingChangeRef.current?.(editing);
+  }, [editing]);
   const [inputValue, setInputValue] = useState("");
   const [hoverZone, setHoverZone] = useState<HoverZone | null>(null);
   const cellRef = useRef<HTMLDivElement>(null);
@@ -76,6 +86,18 @@ export function EditableCell({
   const handleCancel = useCallback(() => {
     setEditing(false);
   }, []);
+
+  const handleReset = useCallback(() => {
+    setInputValue(value !== null ? String(value) : "");
+    onReset?.();
+  }, [onReset, value]);
+
+  // Sync inputValue when value prop changes during editing (e.g. after committed edit is reset)
+  useEffect(() => {
+    if (editing) {
+      setInputValue(value !== null ? String(value) : "");
+    }
+  }, [editing, value]);
 
   // Click-and-drag handler
   const handleMouseDown = useCallback(
@@ -155,22 +177,19 @@ export function EditableCell({
     setHoverZone(getZone(e.clientX, cellRef.current.getBoundingClientRect()));
   }, []);
 
-  const handleHoverLeave = useCallback(() => {
-    setHoverZone(null);
-  }, []);
-
   const unitSuffix = unit ? ` ${unit}` : "";
   const displayText = value === null ? "\u2014" : `${value}${unitSuffix}`;
 
   const titleText = range ? `${range.min} – ${range.max} (step ${range.step})` : undefined;
 
-  const cursorClass = !onStep
-    ? "cursor-text"
-    : hoverZone === "center"
+  const cursorClass =
+    !onStep || editing
       ? "cursor-text"
-      : hoverZone === "left" || hoverZone === "right"
-        ? "cursor-pointer"
-        : "cursor-ew-resize";
+      : hoverZone === "center"
+        ? "cursor-text"
+        : hoverZone === "left" || hoverZone === "right"
+          ? "cursor-pointer"
+          : "cursor-ew-resize";
 
   // Compute range fill (progress bar)
   const { fillPct, staleFill } = (() => {
@@ -237,7 +256,13 @@ export function EditableCell({
       }
       onMouseDown={onStep ? handleMouseDown : undefined}
       onMouseMove={onStep && !editing ? handleHoverMove : undefined}
-      onMouseLeave={onStep && !editing ? handleHoverLeave : undefined}
+      onMouseLeave={
+        onStep && !editing
+          ? () => {
+              setHoverZone(null);
+            }
+          : undefined
+      }
       onFocus={() => {
         if (!editing) {
           startEditing();
@@ -256,10 +281,8 @@ export function EditableCell({
     >
       {staleFill && <span data-stale-fill hidden />}
       {onStep && !editing && hoverZone && <ZoneHint zone={hoverZone} />}
-      <span
-        className={clsx("relative z-[1] flex justify-between gap-2 p-2", editing && "invisible")}
-      >
-        <span>{displayText}</span>
+      <span className="relative z-[1] flex justify-between gap-2 p-2">
+        <span className={clsx(editing && "invisible")}>{displayText}</span>
         {diffNode && (
           <span
             className={clsx("pointer-events-none shrink-0", stale && "opacity-40")}
@@ -277,8 +300,29 @@ export function EditableCell({
           onCancel={handleCancel}
           range={range}
           fallbackStep={fallbackStep}
+          padRight={!!diffNode}
         />
       )}
+      {!!onReset &&
+        (!!isEdited || (editing && inputValue !== (value !== null ? String(value) : ""))) && (
+          <button
+            type="button"
+            title="Reset"
+            tabIndex={-1}
+            onMouseDown={(e) => e.preventDefault()}
+            onMouseMove={(e) => e.stopPropagation()}
+            onMouseEnter={() => setHoverZone(null)}
+            onClick={handleReset}
+            className={clsx(
+              "absolute top-1/2 -right-10 z-[2] flex h-10 w-10 shrink-0 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-text-muted hover:text-text-primary",
+              editing ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+            )}
+          >
+            <svg viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
+              <path d="M2 8a6 6 0 1 1 1.76 4.24l1.42-1.42A4 4 0 1 0 4 8h2L3 11 0 8h2z" />
+            </svg>
+          </button>
+        )}
     </div>
   );
 }
@@ -391,6 +435,7 @@ function CellInput({
   onCancel,
   range,
   fallbackStep,
+  padRight,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -398,6 +443,7 @@ function CellInput({
   onCancel: () => void;
   range?: RangeTriplet;
   fallbackStep?: number;
+  padRight?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -438,7 +484,10 @@ function CellInput({
       onBlur={() => onCommit(value.trim())}
       onKeyDown={handleKeyDown}
       autoComplete="off"
-      className="absolute inset-0 border-accent/60 border-b bg-transparent p-2 text-sm text-text-primary outline-none"
+      className={clsx(
+        "absolute inset-0 border-accent/60 border-b bg-transparent p-2 text-sm text-text-primary outline-none",
+        padRight && "pr-20",
+      )}
     />
   );
 }
