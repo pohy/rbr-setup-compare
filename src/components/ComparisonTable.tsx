@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComparisonResult } from "../lib/compare.ts";
+import { getLabel } from "../lib/label-map.ts";
 import type { RangeMap } from "../lib/range-mapping.ts";
 import type { RangeTriplet } from "../lib/range-parser.ts";
 import { getModifier, SECTION_RENAMES } from "../lib/sanitize.ts";
@@ -326,11 +327,12 @@ function Section({
               style={{ gridColumn: `span ${colCount}` }}
             >
               <div
+                title={row.key}
                 className={clsx(
                   "sticky left-0 z-[2] whitespace-nowrap border border-border bg-base p-2 text-text-secondary group-hover:bg-elevated",
                 )}
               >
-                {row.key}
+                {getLabel(row.key)}
               </div>
               {(() => {
                 const unit = row.unit ? ` ${row.unit}` : "";
