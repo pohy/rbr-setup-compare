@@ -16,7 +16,19 @@ type Props = {
 };
 
 const DRAG_ENTER_THRESHOLD = 2;
-const DRAG_STEP_THRESHOLD = 3;
+const DEFAULT_DRAG_STEP_THRESHOLD = 5;
+const TARGET_FULL_RANGE_PX = 400;
+const MIN_PX_PER_STEP = 2;
+const MAX_PX_PER_STEP = 50;
+
+export function computeDragStepThreshold(range?: RangeTriplet): number {
+  if (!range || range.step === 0 || range.max === range.min) return DEFAULT_DRAG_STEP_THRESHOLD;
+  const totalSteps = (range.max - range.min) / range.step;
+  if (totalSteps <= 0) return DEFAULT_DRAG_STEP_THRESHOLD;
+  return Math.round(
+    Math.min(MAX_PX_PER_STEP, Math.max(MIN_PX_PER_STEP, TARGET_FULL_RANGE_PX / totalSteps)),
+  );
+}
 
 type HoverZone = "left" | "center" | "right";
 
@@ -76,6 +88,7 @@ export function EditableCell({
       let entered = false;
       let accumX = 0;
       let accumY = 0;
+      const stepThreshold = computeDragStepThreshold(range);
 
       const onMouseMove = (me: MouseEvent) => {
         const dx = me.clientX - startX;
@@ -92,7 +105,7 @@ export function EditableCell({
         accumY += -me.movementY;
         const total = accumX + accumY;
 
-        if (Math.abs(total) >= DRAG_STEP_THRESHOLD) {
+        if (Math.abs(total) >= stepThreshold) {
           const direction = total > 0 ? 1 : -1;
           onStep(direction as 1 | -1, me.shiftKey);
           accumX = 0;
@@ -120,7 +133,7 @@ export function EditableCell({
       document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("mouseup", onMouseUp);
     },
-    [onStep, editing, startEditing],
+    [onStep, editing, startEditing, range],
   );
 
   const handleHoverMove = useCallback((e: React.MouseEvent) => {

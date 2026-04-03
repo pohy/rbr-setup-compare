@@ -4,7 +4,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import type { Mock } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EditableCell } from "./EditableCell.tsx";
+import type { RangeTriplet } from "../lib/range-parser.ts";
+import { computeDragStepThreshold, EditableCell } from "./EditableCell.tsx";
 
 afterEach(cleanup);
 
@@ -450,6 +451,118 @@ describe("EditableCell diff display", () => {
     const diffEl = cell.querySelector("[data-stale-diff]");
     expect(diffEl).toBeInTheDocument();
     expect(diffEl).toHaveTextContent(/\+5/);
+  });
+});
+
+describe("computeDragStepThreshold", () => {
+  it("returns default threshold when no range provided", () => {
+    expect(computeDragStepThreshold()).toBe(5);
+  });
+
+  it("returns higher threshold for coarse ranges (few steps)", () => {
+    // 10 steps → 400/10 = 40
+    expect(computeDragStepThreshold({ min: 0, max: 10, step: 1 })).toBe(40);
+  });
+
+  it("returns proportional threshold for moderate ranges", () => {
+    // 100 steps → 400/100 = 4
+    expect(computeDragStepThreshold({ min: 0, max: 100, step: 1 })).toBe(4);
+  });
+
+  it("clamps to minimum threshold for very fine ranges", () => {
+    // 10000 steps → 400/10000 = 0.04 → clamped to 2
+    expect(computeDragStepThreshold({ min: 0, max: 1000, step: 0.1 })).toBe(2);
+  });
+
+  it("clamps to maximum threshold for very coarse ranges", () => {
+    // 2 steps → 400/2 = 200 → clamped to 50
+    expect(computeDragStepThreshold({ min: 0, max: 100, step: 50 })).toBe(50);
+  });
+
+  it("falls back to default when step is 0", () => {
+    expect(computeDragStepThreshold({ min: 0, max: 100, step: 0 })).toBe(5);
+  });
+
+  it("falls back to default when min equals max", () => {
+    expect(computeDragStepThreshold({ min: 50, max: 50, step: 1 })).toBe(5);
+  });
+
+  it("works with non-zero min", () => {
+    // range 10..60, step 5 → 10 steps → 400/10 = 40
+    expect(computeDragStepThreshold({ min: 10, max: 60, step: 5 })).toBe(40);
+  });
+});
+
+describe("EditableCell drag normalization", () => {
+  beforeEach(() => {
+    HTMLElement.prototype.requestPointerLock = vi.fn();
+    document.exitPointerLock = vi.fn();
+  });
+
+  afterEach(cleanup);
+
+  type OnStep = NonNullable<ComponentProps<typeof EditableCell>["onStep"]>;
+
+  function renderDraggable(range: RangeTriplet) {
+    const onStep = vi.fn<OnStep>();
+    render(
+      <EditableCell value={50} unit="kN/m" range={range} onCommit={() => {}} onStep={onStep} />,
+    );
+    const cell = screen.getByRole("button");
+    vi.spyOn(cell, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 300,
+      bottom: 30,
+      width: 300,
+      height: 30,
+      toJSON: () => {},
+    });
+    return { cell, onStep };
+  }
+
+  /** Simulate drag: mousedown then N mousemove events of `pxPerMove` each. */
+  function drag(el: HTMLElement, totalPx: number, pxPerMove = 1) {
+    fireEvent.mouseDown(el, { button: 0, clientX: 150, clientY: 15 });
+    let cx = 150;
+    // First move needs to exceed enter threshold
+    for (let moved = 0; moved < totalPx; moved += pxPerMove) {
+      cx += pxPerMove;
+      fireEvent(
+        document,
+        new MouseEvent("mousemove", {
+          clientX: cx,
+          clientY: 15,
+          movementX: pxPerMove,
+          movementY: 0,
+        }),
+      );
+    }
+    fireEvent(document, new MouseEvent("mouseup", { clientX: cx, clientY: 15 }));
+  }
+
+  it("coarse field requires more pixels per step than fine field", () => {
+    // Coarse: 10 steps → threshold ~40px/step
+    const coarse = renderDraggable({ min: 0, max: 10, step: 1 });
+    drag(coarse.cell, 20);
+    expect(coarse.onStep).not.toHaveBeenCalled();
+
+    cleanup();
+
+    // Fine: 400 steps → threshold ~1 → clamped to 2px/step
+    const fine = renderDraggable({ min: 0, max: 100, step: 0.25 });
+    drag(fine.cell, 20, 2);
+    expect(fine.onStep.mock.calls.length).toBeGreaterThan(0);
+  });
+
+  it("coarse field triggers step after sufficient drag distance", () => {
+    // 10 steps → threshold = 40px/step
+    const { cell, onStep } = renderDraggable({ min: 0, max: 10, step: 1 });
+    drag(cell, 42);
+    expect(onStep).toHaveBeenCalledTimes(1);
+    expect(onStep).toHaveBeenCalledWith(1, false);
   });
 });
 
