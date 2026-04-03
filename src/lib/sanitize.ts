@@ -19,6 +19,18 @@ export function getUnit(key: string): string | undefined {
   return getFieldConfig(key)?.unit;
 }
 
+export function getModifier(key: string): number {
+  return getFieldConfig(key)?.modifier ?? 1;
+}
+
+export function unsanitizeValue(key: string, displayValue: number): number {
+  const modifier = getModifier(key);
+  if (modifier === 1) {
+    return displayValue;
+  }
+  return displayValue / modifier;
+}
+
 function cleanNumber(n: number): number {
   const rounded = Math.round(n * 10000) / 10000;
   return rounded;
@@ -73,12 +85,16 @@ export function sanitizeSetup(setup: CarSetup): CarSetup {
 
   for (const [sectionName, section] of Object.entries(setup.sections)) {
     // Discard right-side sections
-    if (SECTION_DISCARD.has(sectionName)) continue;
+    if (SECTION_DISCARD.has(sectionName)) {
+      continue;
+    }
 
     // Remove Engine section if it only has Features_NGP
     if (sectionName === "Engine") {
       const keys = Object.keys(section.values);
-      if (keys.length === 1 && keys[0] === "Features_NGP") continue;
+      if (keys.length === 1 && keys[0] === "Features_NGP") {
+        continue;
+      }
     }
 
     // Sanitize values

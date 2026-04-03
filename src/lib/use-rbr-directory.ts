@@ -12,9 +12,26 @@ import {
   verifyPermission,
 } from "./fs-access.ts";
 import { type CarSetup, parseLspSetup } from "./lsp-parser.ts";
+import { mapRangesToSetup, type RangeMap } from "./range-mapping.ts";
+import { parseRangeFile } from "./range-parser.ts";
 import { type CarGroup, type ScannedSetup, scanRbrDirectory } from "./rbr-scanner.ts";
 
 export type { CarGroup, ScannedSetup };
+
+const SURFACE_FROM_DEFAULT_RE = /^(?:d_)?(\w+)\.lsp$/;
+const SURFACE_FROM_NAMED_RE = /^(\w+?)_/;
+
+export function inferSurface(fileName: string): string | null {
+  const defaultMatch = fileName.match(SURFACE_FROM_DEFAULT_RE);
+  if (defaultMatch) {
+    return defaultMatch[1];
+  }
+  const namedMatch = fileName.match(SURFACE_FROM_NAMED_RE);
+  if (namedMatch) {
+    return namedMatch[1];
+  }
+  return null;
+}
 
 export function useRbrDirectory() {
   const isSupported = isFileSystemAccessSupported();
@@ -47,9 +64,13 @@ export function useRbrDirectory() {
 
   // On mount: if stored handle exists and permission already granted, auto-scan
   useEffect(() => {
-    if (!isSupported) return;
+    if (!isSupported) {
+      return;
+    }
     loadDirectoryHandle().then(async (h) => {
-      if (!h) return;
+      if (!h) {
+        return;
+      }
       setHasStoredHandle(true);
       setHandle(h);
       const granted = await checkPermission(h);
@@ -71,7 +92,9 @@ export function useRbrDirectory() {
       await saveDirectoryHandle(dirHandle);
       setHasStoredHandle(true);
     } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return;
+      if (e instanceof DOMException && e.name === "AbortError") {
+        return;
+      }
       setError(e instanceof Error ? e.message : String(e));
     }
   }, [scan]);
@@ -102,12 +125,38 @@ export function useRbrDirectory() {
     return results;
   }, []);
 
+  const loadRanges = useCallback(
+    async (carName: string, surface: string): Promise<RangeMap | null> => {
+      const group = carGroups.find((g) => g.carName === carName);
+      if (!group) {
+        return null;
+      }
+      const entry = group.rangeFiles.find((r) => r.surface === surface) ?? group.rangeFiles[0];
+      if (!entry) {
+        return null;
+      }
+      try {
+        const text = await readFileHandle(entry.fileHandle);
+        const raw = parseRangeFile(text);
+        return mapRangesToSetup(raw);
+      } catch (e) {
+        console.error(`[rbr-dir] Failed to load ranges for ${carName}/${surface}:`, e);
+        return null;
+      }
+    },
+    [carGroups],
+  );
+
   const forgetDirectory = useCallback(async () => {
     await clearDirectoryHandle();
     setHasStoredHandle(false);
     setHandle(null);
     setCarGroups([]);
     setError(null);
+  }, []);
+
+  const updateCarGroups = useCallback((groups: CarGroup[]) => {
+    setCarGroups(groups);
   }, []);
 
   return {
@@ -120,6 +169,8 @@ export function useRbrDirectory() {
     pickDirectory: pickAndScan,
     reopenDirectory,
     loadSetups,
+    loadRanges,
     forgetDirectory,
+    updateCarGroups,
   };
 }

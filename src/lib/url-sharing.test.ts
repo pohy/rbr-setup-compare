@@ -45,7 +45,9 @@ describe("URL sharing round-trip", () => {
 
     const result = buildShareUrl(setups, false);
     expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error("buildShareUrl failed");
+    if (!result.ok) {
+      throw new Error("buildShareUrl failed");
+    }
 
     // Set hash from the built URL so hydrateFromUrl can read it
     const hashIndex = result.url.indexOf("#");
@@ -53,7 +55,9 @@ describe("URL sharing round-trip", () => {
 
     const hydrated = hydrateFromUrl();
     expect(hydrated.found).toBe(true);
-    if (!hydrated.found) throw new Error("hydrateFromUrl failed");
+    if (!hydrated.found) {
+      throw new Error("hydrateFromUrl failed");
+    }
 
     const originalComparison = compareSetups(setups);
     const hydratedComparison = compareSetups(hydrated.setups);

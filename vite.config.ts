@@ -1,5 +1,7 @@
+/// <reference types="vitest/config" />
+import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 
 function umamiPlugin(): Plugin {
@@ -10,7 +12,9 @@ function umamiPlugin(): Plugin {
       isProd = config.command === "build";
     },
     transformIndexHtml() {
-      if (!isProd) return [];
+      if (!isProd) {
+        return [];
+      }
       return [
         {
           tag: "script",
@@ -28,5 +32,15 @@ function umamiPlugin(): Plugin {
 
 export default defineConfig({
   base: "/rbr-setup-compare/",
-  plugins: [react(), tailwindcss(), umamiPlugin()],
+  plugins: [
+    react(),
+    babel({
+      presets: [reactCompilerPreset()],
+    }),
+    tailwindcss(),
+    umamiPlugin(),
+  ],
+  test: {
+    setupFiles: ["./src/test-setup.ts"],
+  },
 });

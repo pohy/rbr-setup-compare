@@ -31,21 +31,31 @@ export function DropZone({
 
     const handleDragEnter = (e: DragEvent) => {
       e.preventDefault();
-      if (!hasFileType(e)) return;
+      if (!hasFileType(e)) {
+        return;
+      }
       dragCounter++;
-      if (dragCounter === 1) setIsDragging(true);
+      if (dragCounter === 1) {
+        setIsDragging(true);
+      }
     };
     const handleDragLeave = (e: DragEvent) => {
       e.preventDefault();
-      if (!hasFileType(e)) return;
+      if (!hasFileType(e)) {
+        return;
+      }
       dragCounter--;
-      if (dragCounter === 0) setIsDragging(false);
+      if (dragCounter === 0) {
+        setIsDragging(false);
+      }
     };
     const handleDragOver = (e: DragEvent) => {
       e.preventDefault();
     };
     const handleDrop = (e: DragEvent) => {
-      if (!hasFileType(e)) return;
+      if (!hasFileType(e)) {
+        return;
+      }
       e.preventDefault();
       dragCounter = 0;
       setIsDragging(false);
@@ -74,24 +84,26 @@ export function DropZone({
         role="button"
         tabIndex={0}
         className={clsx(
-          "fixed inset-0 flex flex-col items-center justify-center cursor-pointer z-50",
-          isDragging ? "bg-base/90 border border-accent" : "bg-base",
+          "fixed inset-0 z-50 flex cursor-pointer flex-col items-center justify-center",
+          isDragging ? "border border-accent bg-base/90" : "bg-base",
         )}
         onClick={onBrowse}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") onBrowse();
+          if (e.key === "Enter" || e.key === " ") {
+            onBrowse();
+          }
         }}
       >
         <p
           className={clsx(
-            "text-sm uppercase tracking-widest font-medium mb-2",
+            "mb-2 font-medium text-sm uppercase tracking-widest",
             isDragging ? "text-accent" : "text-text-secondary",
           )}
         >
           {isDragging ? "Drop .lsp files here" : "Drop .lsp setup files here"}
         </p>
         {!isDragging && (
-          <p className="text-xs uppercase tracking-wider text-text-muted">or click to browse</p>
+          <p className="text-text-muted text-xs uppercase tracking-wider">or click to browse</p>
         )}
         {!isDragging && isDirectorySupported && (
           <button
@@ -100,7 +112,7 @@ export function DropZone({
               e.stopPropagation();
               onOpenDirectory?.();
             }}
-            className="mt-4 px-4 py-1.5 border border-border text-xs uppercase tracking-wider text-text-secondary hover:text-accent hover:border-accent cursor-pointer transition-colors"
+            className="mt-4 cursor-pointer border border-border px-4 py-1.5 text-text-secondary text-xs uppercase tracking-wider transition-colors hover:border-accent hover:text-accent"
           >
             {hasStoredHandle ? "Reopen RBR folder" : "Open RBR installation folder"}
           </button>
@@ -112,12 +124,12 @@ export function DropZone({
               e.stopPropagation();
               onLoadExample();
             }}
-            className="mt-3 px-4 py-1.5 border border-border text-xs uppercase tracking-wider text-text-secondary hover:text-accent hover:border-accent cursor-pointer transition-colors"
+            className="mt-3 cursor-pointer border border-border px-4 py-1.5 text-text-secondary text-xs uppercase tracking-wider transition-colors hover:border-accent hover:text-accent"
           >
             Show example comparison
           </button>
         )}
-        {error && <p className="mt-4 text-diff-negative text-xs max-w-md text-center">{error}</p>}
+        {error && <p className="mt-4 max-w-md text-center text-diff-negative text-xs">{error}</p>}
       </div>
     );
   }
@@ -125,8 +137,8 @@ export function DropZone({
   // Drag overlay when files are already loaded
   if (isDragging) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/90 border border-accent">
-        <p className="text-sm uppercase tracking-widest font-medium text-accent">
+      <div className="fixed inset-0 z-50 flex items-center justify-center border border-accent bg-base/90">
+        <p className="font-medium text-accent text-sm uppercase tracking-widest">
           Drop .lsp files to add
         </p>
       </div>
