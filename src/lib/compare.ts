@@ -55,7 +55,9 @@ export type SectionComparison = {
 export type ComparisonResult = SectionComparison[];
 
 export function compareSetups(rawSetups: CarSetup[]): ComparisonResult {
-  if (rawSetups.length === 0) return [];
+  if (rawSetups.length === 0) {
+    return [];
+  }
 
   const setups = rawSetups.map(sanitizeSetup);
 
@@ -79,7 +81,9 @@ export function compareSetups(rawSetups: CarSetup[]): ComparisonResult {
     const keySet = new Set<string>();
     for (const setup of setups) {
       const section = setup.sections[sectionName];
-      if (!section) continue;
+      if (!section) {
+        continue;
+      }
       for (const key of Object.keys(section.values)) {
         if (!keySet.has(key)) {
           keySet.add(key);
@@ -94,7 +98,9 @@ export function compareSetups(rawSetups: CarSetup[]): ComparisonResult {
       .map((key) => {
         const values = setups.map((setup) => {
           const section = setup.sections[sectionName];
-          if (!section) return null;
+          if (!section) {
+            return null;
+          }
           return section.values[key] ?? null;
         });
 
@@ -141,9 +147,13 @@ export function computeRatio(
 ): string | null {
   const f = typeof front === "number" ? front : Number(front);
   const r = typeof rear === "number" ? rear : Number(rear);
-  if (front === null || rear === null || Number.isNaN(f) || Number.isNaN(r)) return null;
+  if (front === null || rear === null || Number.isNaN(f) || Number.isNaN(r)) {
+    return null;
+  }
   const sum = f + r;
-  if (sum === 0) return null;
+  if (sum === 0) {
+    return null;
+  }
   const frontPct = Math.round((f / sum) * 100);
   return `${frontPct}:${100 - frontPct}`;
 }
@@ -160,7 +170,9 @@ function groupFrontRearPairs(rows: ComparisonRow[]): DisplayRow[] {
   }
 
   for (const row of rows) {
-    if (emitted.has(row.key)) continue;
+    if (emitted.has(row.key)) {
+      continue;
+    }
 
     if (indexedKeyPattern.test(row.key)) {
       result.push(row);

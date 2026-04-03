@@ -11,7 +11,9 @@ export function getUncheckConfirmMessage(
   hasEdits: boolean,
   uncheckPath: string,
 ): string | null {
-  if (!editSourceName || editSourceName !== uncheckPath || !hasEdits) return null;
+  if (!editSourceName || editSourceName !== uncheckPath || !hasEdits) {
+    return null;
+  }
   const fileName = uncheckPath.split("/").pop() ?? uncheckPath;
   return `Unchecking "${fileName}" will discard your unsaved edits.`;
 }

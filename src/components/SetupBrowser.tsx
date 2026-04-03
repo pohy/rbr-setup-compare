@@ -32,15 +32,21 @@ export function SetupBrowser({
   const filterLower = filter.toLowerCase();
 
   const filteredGroups = useMemo(() => {
-    if (!filterLower) return carGroups;
+    if (!filterLower) {
+      return carGroups;
+    }
     return carGroups
       .map((group) => {
         const carMatch = group.carName.toLowerCase().includes(filterLower);
-        if (carMatch) return group;
+        if (carMatch) {
+          return group;
+        }
         const matchingSetups = group.setups.filter((s) =>
           s.fileName.toLowerCase().includes(filterLower),
         );
-        if (matchingSetups.length === 0) return null;
+        if (matchingSetups.length === 0) {
+          return null;
+        }
         return { ...group, setups: matchingSetups };
       })
       .filter((g): g is CarGroup => g !== null);

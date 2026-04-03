@@ -42,7 +42,9 @@ function makeEditConfig(overrides: Partial<EditConfig> = {}): EditConfig {
 function openEditPopover() {
   const editHeader = screen.getByRole("columnheader", { name: /edited/i });
   const dotsButton = editHeader.querySelector("button[title='Actions']");
-  if (!dotsButton) throw new Error("Actions button not found in edit column header");
+  if (!dotsButton) {
+    throw new Error("Actions button not found in edit column header");
+  }
   fireEvent.click(dotsButton);
 }
 

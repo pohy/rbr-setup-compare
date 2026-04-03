@@ -17,7 +17,9 @@ export function processRecords(records: FileSystemChangeRecord[]): WatcherChange
       case "appeared":
       case "disappeared":
       case "modified": {
-        if (!isLsp(record.relativePathComponents)) continue;
+        if (!isLsp(record.relativePathComponents)) {
+          continue;
+        }
         const relativePath = record.relativePathComponents.join("/");
         changeMap.set(relativePath, { type: record.type, relativePath });
         break;

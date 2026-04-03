@@ -22,9 +22,13 @@ const MIN_PX_PER_STEP = 2;
 const MAX_PX_PER_STEP = 50;
 
 export function computeDragStepThreshold(range?: RangeTriplet): number {
-  if (!range || range.step === 0 || range.max === range.min) return DEFAULT_DRAG_STEP_THRESHOLD;
+  if (!range || range.step === 0 || range.max === range.min) {
+    return DEFAULT_DRAG_STEP_THRESHOLD;
+  }
   const totalSteps = (range.max - range.min) / range.step;
-  if (totalSteps <= 0) return DEFAULT_DRAG_STEP_THRESHOLD;
+  if (totalSteps <= 0) {
+    return DEFAULT_DRAG_STEP_THRESHOLD;
+  }
   return Math.round(
     Math.min(MAX_PX_PER_STEP, Math.max(MIN_PX_PER_STEP, TARGET_FULL_RANGE_PX / totalSteps)),
   );
@@ -76,8 +80,12 @@ export function EditableCell({
   // Click-and-drag handler
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      if (!onStep || editing) return;
-      if (e.button !== 0) return;
+      if (!onStep || editing) {
+        return;
+      }
+      if (e.button !== 0) {
+        return;
+      }
       e.preventDefault();
 
       const startX = e.clientX;
@@ -95,9 +103,13 @@ export function EditableCell({
         const dy = me.clientY - startY;
 
         if (!entered) {
-          if (Math.abs(dx) + Math.abs(dy) < DRAG_ENTER_THRESHOLD) return;
+          if (Math.abs(dx) + Math.abs(dy) < DRAG_ENTER_THRESHOLD) {
+            return;
+          }
           entered = true;
-          if (cellRef.current) enterDragMode(cellRef.current);
+          if (cellRef.current) {
+            enterDragMode(cellRef.current);
+          }
         }
 
         // Accumulate movement: right/up = positive
@@ -137,7 +149,9 @@ export function EditableCell({
   );
 
   const handleHoverMove = useCallback((e: React.MouseEvent) => {
-    if (!cellRef.current) return;
+    if (!cellRef.current) {
+      return;
+    }
     setHoverZone(getZone(e.clientX, cellRef.current.getBoundingClientRect()));
   }, []);
 
@@ -160,7 +174,9 @@ export function EditableCell({
 
   // Compute range fill (progress bar)
   const { fillPct, staleFill } = (() => {
-    if (!range) return { fillPct: null, staleFill: false };
+    if (!range) {
+      return { fillPct: null, staleFill: false };
+    }
 
     const currentNum = editing ? parseFloat(inputValue) : Number(value);
     const validNum = !Number.isNaN(currentNum);
@@ -183,7 +199,9 @@ export function EditableCell({
 
   // Compute diff against reference value
   const { diffNode, stale } = (() => {
-    if (refValue == null || Number.isNaN(refValue)) return { diffNode: null, stale: false };
+    if (refValue == null || Number.isNaN(refValue)) {
+      return { diffNode: null, stale: false };
+    }
 
     const currentNum = editing ? parseFloat(inputValue) : Number(value);
     const validNum = !Number.isNaN(currentNum);
@@ -191,13 +209,17 @@ export function EditableCell({
     if (validNum) {
       const diff = currentNum - refValue;
       lastValidDiffRef.current = diff;
-      if (Math.abs(diff) < 0.0001) return { diffNode: null, stale: false };
+      if (Math.abs(diff) < 0.0001) {
+        return { diffNode: null, stale: false };
+      }
       return { diffNode: formatDiffSpan(diff, maxDecimals ?? 0, unitSuffix), stale: false };
     }
 
     // Non-numeric input: show last valid diff dimmed
     const lastDiff = lastValidDiffRef.current;
-    if (lastDiff == null || Math.abs(lastDiff) < 0.0001) return { diffNode: null, stale: false };
+    if (lastDiff == null || Math.abs(lastDiff) < 0.0001) {
+      return { diffNode: null, stale: false };
+    }
     return { diffNode: formatDiffSpan(lastDiff, maxDecimals ?? 0, unitSuffix), stale: true };
   })();
 
@@ -208,17 +230,23 @@ export function EditableCell({
         onStep
           ? undefined
           : () => {
-              if (!editing) startEditing();
+              if (!editing) {
+                startEditing();
+              }
             }
       }
       onMouseDown={onStep ? handleMouseDown : undefined}
       onMouseMove={onStep && !editing ? handleHoverMove : undefined}
       onMouseLeave={onStep && !editing ? handleHoverLeave : undefined}
       onFocus={() => {
-        if (!editing) startEditing();
+        if (!editing) {
+          startEditing();
+        }
       }}
       onKeyDown={(e) => {
-        if (!editing && (e.key === "Enter" || e.key === " ")) startEditing();
+        if (!editing && (e.key === "Enter" || e.key === " ")) {
+          startEditing();
+        }
       }}
       role="button"
       tabIndex={editing ? -1 : 0}
@@ -275,15 +303,21 @@ function formatDiffSpan(diff: number, maxDecimals: number, unitSuffix: string) {
 function getZone(clientX: number, rect: DOMRect): HoverZone {
   const third = rect.width / 3;
   const rel = clientX - rect.left;
-  if (rel < third) return "left";
-  if (rel > third * 2) return "right";
+  if (rel < third) {
+    return "left";
+  }
+  if (rel > third * 2) {
+    return "right";
+  }
   return "center";
 }
 
 let dragStyleEl: HTMLStyleElement | null = null;
 
 function enterDragMode(el: HTMLElement) {
-  if (dragStyleEl) return;
+  if (dragStyleEl) {
+    return;
+  }
   dragStyleEl = document.createElement("style");
   dragStyleEl.textContent = "* { pointer-events: none !important; }";
   document.head.appendChild(dragStyleEl);

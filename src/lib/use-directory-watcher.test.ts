@@ -49,12 +49,16 @@ function makeLspRecord(
 }
 
 function fireCallback(records: FileSystemChangeRecord[]) {
-  if (!observerCallback) throw new Error("observer not initialized");
+  if (!observerCallback) {
+    throw new Error("observer not initialized");
+  }
   observerCallback(records, {} as FileSystemObserver);
 }
 
 function getObserver() {
-  if (!observerInstance) throw new Error("observer not initialized");
+  if (!observerInstance) {
+    throw new Error("observer not initialized");
+  }
   return observerInstance;
 }
 

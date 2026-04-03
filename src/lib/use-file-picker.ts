@@ -10,7 +10,9 @@ export function useFilePicker(onFilesReady: (setups: CarSetup[]) => void) {
       const results: CarSetup[] = [];
 
       for (const file of Array.from(files)) {
-        if (!file.name.endsWith(".lsp")) continue;
+        if (!file.name.endsWith(".lsp")) {
+          continue;
+        }
         try {
           const text = await file.text();
           const setup = parseLspSetup(text, file.name);

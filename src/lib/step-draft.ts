@@ -13,7 +13,9 @@ export function stepDraft(
   fallbackStep?: number,
 ): string | null {
   const num = parseFloat(current);
-  if (Number.isNaN(num)) return null;
+  if (Number.isNaN(num)) {
+    return null;
+  }
 
   if (range) {
     const result = stepValue(num, direction, range, fine);

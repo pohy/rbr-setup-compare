@@ -22,14 +22,18 @@ export function tokenize(text: string): Token[] {
       i++;
     } else if (ch === '"') {
       let j = i + 1;
-      while (j < stripped.length && stripped[j] !== '"') j++;
+      while (j < stripped.length && stripped[j] !== '"') {
+        j++;
+      }
       tokens.push(stripped.slice(i, j + 1));
       i = j + 1;
     } else if (/\s/.test(ch)) {
       i++;
     } else {
       let j = i;
-      while (j < stripped.length && !/[\s()""]/.test(stripped[j])) j++;
+      while (j < stripped.length && !/[\s()""]/.test(stripped[j])) {
+        j++;
+      }
       tokens.push(stripped.slice(i, j));
       i = j;
     }
@@ -61,7 +65,9 @@ export function parseLspSetup(text: string, name: string): CarSetup {
   }
   function expect(val: string) {
     const t = next();
-    if (t !== val) throw new Error(`Expected "${val}", got "${t}" at token ${pos - 1}`);
+    if (t !== val) {
+      throw new Error(`Expected "${val}", got "${t}" at token ${pos - 1}`);
+    }
   }
   function unquote(s: string): string {
     return s.startsWith('"') && s.endsWith('"') ? s.slice(1, -1) : s;
@@ -78,7 +84,9 @@ export function parseLspSetup(text: string, name: string): CarSetup {
 
     while (peek() !== ")" && pos < tokens.length) {
       const tok = peek();
-      if (tok === undefined || tok === "(" || tok === ")") break;
+      if (tok === undefined || tok === "(" || tok === ")") {
+        break;
+      }
 
       // Check if this is a sub-section: bare word followed by (
       if (!isNumeric(tok) && tokens[pos + 1] === "(") {
@@ -154,7 +162,9 @@ export function parseLspSetup(text: string, name: string): CarSetup {
   }
 
   // Consume remaining closing parens
-  while (peek() === ")") next();
+  while (peek() === ")") {
+    next();
+  }
 
   return { name, sections };
 

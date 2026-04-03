@@ -12,7 +12,9 @@ function umamiPlugin(): Plugin {
       isProd = config.command === "build";
     },
     transformIndexHtml() {
-      if (!isProd) return [];
+      if (!isProd) {
+        return [];
+      }
       return [
         {
           tag: "script",

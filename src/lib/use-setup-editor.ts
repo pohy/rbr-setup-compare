@@ -33,7 +33,9 @@ export function deriveEditedSetup(
 
   for (const [section, keyEdits] of edits) {
     const sec = clone.sections[section];
-    if (!sec) continue;
+    if (!sec) {
+      continue;
+    }
     for (const [key, value] of keyEdits) {
       sec.values[key] = value;
       // Clear rawValues for edited keys so setupToLsp uses the new value
@@ -48,7 +50,9 @@ export function deriveEditedSetup(
 
 export function clampToRange(value: number, range: RangeTriplet): number {
   const clamped = Math.min(Math.max(value, range.min), range.max);
-  if (range.step === 0) return clamped;
+  if (range.step === 0) {
+    return clamped;
+  }
   return range.min + Math.round((clamped - range.min) / range.step) * range.step;
 }
 
@@ -85,7 +89,9 @@ export function useSetupEditor() {
   const updateValue = useCallback(
     (section: string, key: string, rawValue: number | string) => {
       setEditState((prev) => {
-        if (!prev) return prev;
+        if (!prev) {
+          return prev;
+        }
         const newEdits = new Map(prev.edits);
         const sectionEdits = new Map(newEdits.get(section) ?? []);
         sectionEdits.set(key, rawValue);
@@ -99,12 +105,16 @@ export function useSetupEditor() {
   const updateValueWith = useCallback(
     (section: string, key: string, fn: (current: number) => number) => {
       setEditState((prev) => {
-        if (!prev) return prev;
+        if (!prev) {
+          return prev;
+        }
         // Read current value: from edits first, then from source setup
         const existing = prev.edits.get(section)?.get(key);
         const source = prev.sourceSetup.sections[section]?.values[key];
         const current = existing !== undefined ? Number(existing) : Number(source);
-        if (Number.isNaN(current)) return prev;
+        if (Number.isNaN(current)) {
+          return prev;
+        }
 
         const newValue = fn(current);
         const newEdits = new Map(prev.edits);
@@ -127,9 +137,13 @@ export function useSetupEditor() {
   const resetValue = useCallback(
     (section: string, key: string) => {
       setEditState((prev) => {
-        if (!prev) return prev;
+        if (!prev) {
+          return prev;
+        }
         const sectionEdits = prev.edits.get(section);
-        if (!sectionEdits?.has(key)) return prev;
+        if (!sectionEdits?.has(key)) {
+          return prev;
+        }
         const newEdits = new Map(prev.edits);
         const newSectionEdits = new Map(sectionEdits);
         newSectionEdits.delete(key);
@@ -147,7 +161,9 @@ export function useSetupEditor() {
   const updateSource = useCallback(
     (newSetup: CarSetup) => {
       setEditState((prev) => {
-        if (!prev || prev.sourceName !== newSetup.name) return prev;
+        if (!prev || prev.sourceName !== newSetup.name) {
+          return prev;
+        }
         return { ...prev, sourceSetup: deepCloneSetup(newSetup) };
       });
     },
@@ -157,7 +173,9 @@ export function useSetupEditor() {
   const relocateSource = useCallback(
     (newName: string) => {
       setEditState((prev) => {
-        if (!prev) return prev;
+        if (!prev) {
+          return prev;
+        }
         const baked = deriveEditedSetup(prev.sourceSetup, prev.edits);
         return {
           sourceName: newName,
@@ -175,7 +193,9 @@ export function useSetupEditor() {
   }, [setEditState]);
 
   const getEditedSetup = useCallback((): CarSetup | null => {
-    if (!editState) return null;
+    if (!editState) {
+      return null;
+    }
     return deriveEditedSetup(editState.sourceSetup, editState.edits);
   }, [editState]);
 

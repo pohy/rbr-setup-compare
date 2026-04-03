@@ -59,19 +59,27 @@ export function __resetPersistentStateForTesting() {
 function notifySubscribers(key: string) {
   const subs = subscribers.get(key);
   if (subs) {
-    for (const cb of subs) cb();
+    for (const cb of subs) {
+      cb();
+    }
   }
 }
 
 function handleStorageEvent(e: StorageEvent) {
-  if (e.storageArea !== localStorage) return;
+  if (e.storageArea !== localStorage) {
+    return;
+  }
   if (e.key === null) {
     // Storage was cleared
     cache.clear();
-    for (const key of subscribers.keys()) notifySubscribers(key);
+    for (const key of subscribers.keys()) {
+      notifySubscribers(key);
+    }
     return;
   }
-  if (!subscribers.has(e.key)) return;
+  if (!subscribers.has(e.key)) {
+    return;
+  }
   // Invalidate cache — let getSnapshot re-read with the correct deserializer
   cache.delete(e.key);
   notifySubscribers(e.key);
@@ -104,11 +112,15 @@ function getSnapshot<K extends StorageKey>(
   options?: PersistOptions<K>,
 ): StorageMap[K] {
   const cached = cache.get(key);
-  if (cached) return cached.value as StorageMap[K];
+  if (cached) {
+    return cached.value as StorageMap[K];
+  }
 
   try {
     const raw = localStorage.getItem(key);
-    if (raw === null) return defaultValue;
+    if (raw === null) {
+      return defaultValue;
+    }
     const jsonParsed = JSON.parse(raw);
     const value = options?.deserialize
       ? options.deserialize(jsonParsed)
