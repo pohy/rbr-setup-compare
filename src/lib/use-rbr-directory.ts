@@ -23,9 +23,13 @@ const SURFACE_FROM_NAMED_RE = /^(\w+?)_/;
 
 export function inferSurface(fileName: string): string | null {
   const defaultMatch = fileName.match(SURFACE_FROM_DEFAULT_RE);
-  if (defaultMatch) return defaultMatch[1];
+  if (defaultMatch) {
+    return defaultMatch[1];
+  }
   const namedMatch = fileName.match(SURFACE_FROM_NAMED_RE);
-  if (namedMatch) return namedMatch[1];
+  if (namedMatch) {
+    return namedMatch[1];
+  }
   return null;
 }
 
@@ -60,9 +64,13 @@ export function useRbrDirectory() {
 
   // On mount: if stored handle exists and permission already granted, auto-scan
   useEffect(() => {
-    if (!isSupported) return;
+    if (!isSupported) {
+      return;
+    }
     loadDirectoryHandle().then(async (h) => {
-      if (!h) return;
+      if (!h) {
+        return;
+      }
       setHasStoredHandle(true);
       setHandle(h);
       const granted = await checkPermission(h);
@@ -84,7 +92,9 @@ export function useRbrDirectory() {
       await saveDirectoryHandle(dirHandle);
       setHasStoredHandle(true);
     } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return;
+      if (e instanceof DOMException && e.name === "AbortError") {
+        return;
+      }
       setError(e instanceof Error ? e.message : String(e));
     }
   }, [scan]);
@@ -118,9 +128,13 @@ export function useRbrDirectory() {
   const loadRanges = useCallback(
     async (carName: string, surface: string): Promise<RangeMap | null> => {
       const group = carGroups.find((g) => g.carName === carName);
-      if (!group) return null;
+      if (!group) {
+        return null;
+      }
       const entry = group.rangeFiles.find((r) => r.surface === surface) ?? group.rangeFiles[0];
-      if (!entry) return null;
+      if (!entry) {
+        return null;
+      }
       try {
         const text = await readFileHandle(entry.fileHandle);
         const raw = parseRangeFile(text);

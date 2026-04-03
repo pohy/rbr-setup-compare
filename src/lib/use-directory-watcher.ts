@@ -17,8 +17,12 @@ export function useDirectoryWatcher(options: DirectoryWatcherOptions): void {
   onChangesRef.current = onChanges;
 
   useEffect(() => {
-    if (!enabled || !directoryHandle) return;
-    if (typeof FileSystemObserver === "undefined") return;
+    if (!enabled || !directoryHandle) {
+      return;
+    }
+    if (typeof FileSystemObserver === "undefined") {
+      return;
+    }
 
     // Capture handle for use inside closures (narrowed from the guard above)
     const handle = directoryHandle;
@@ -29,10 +33,14 @@ export function useDirectoryWatcher(options: DirectoryWatcherOptions): void {
     let disposed = false;
 
     const observer = new FileSystemObserver((records: FileSystemChangeRecord[]) => {
-      if (disposed) return;
+      if (disposed) {
+        return;
+      }
       accumulatedRecords.push(...records);
 
-      if (debounceTimer !== null) clearTimeout(debounceTimer);
+      if (debounceTimer !== null) {
+        clearTimeout(debounceTimer);
+      }
       debounceTimer = setTimeout(() => {
         debounceTimer = null;
         void flush();
@@ -40,16 +48,22 @@ export function useDirectoryWatcher(options: DirectoryWatcherOptions): void {
     });
 
     async function flush() {
-      if (disposed || isRescanning) return;
+      if (disposed || isRescanning) {
+        return;
+      }
       const records = accumulatedRecords;
       accumulatedRecords = [];
 
-      if (!hasLspChanges(records)) return;
+      if (!hasLspChanges(records)) {
+        return;
+      }
 
       isRescanning = true;
       try {
         const newGroups = await scanRbrDirectory(handle);
-        if (disposed) return;
+        if (disposed) {
+          return;
+        }
         const changes = processRecords(records);
         onChangesRef.current(changes, newGroups);
       } catch (e) {
@@ -63,7 +77,9 @@ export function useDirectoryWatcher(options: DirectoryWatcherOptions): void {
 
     return () => {
       disposed = true;
-      if (debounceTimer !== null) clearTimeout(debounceTimer);
+      if (debounceTimer !== null) {
+        clearTimeout(debounceTimer);
+      }
       observer.disconnect();
     };
   }, [directoryHandle, enabled, debounceMs]);

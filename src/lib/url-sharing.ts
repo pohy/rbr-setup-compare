@@ -64,12 +64,16 @@ type HydrateResult = { found: true; setups: CarSetup[]; diffsOnly: boolean } | {
 
 export function hydrateFromUrl(): HydrateResult {
   const hash = window.location.hash;
-  if (!hash.startsWith("#data=")) return { found: false };
+  if (!hash.startsWith("#data=")) {
+    return { found: false };
+  }
 
   try {
     const compressed = hash.slice("#data=".length);
     const json = decompressFromEncodedURIComponent(compressed);
-    if (!json) return { found: false };
+    if (!json) {
+      return { found: false };
+    }
 
     const payload = JSON.parse(json) as Payload;
     if (payload.v !== SCHEMA_VERSION || !Array.isArray(payload.s)) {
@@ -83,7 +87,9 @@ export function hydrateFromUrl(): HydrateResult {
       for (let i = 0; i < SETUP_SCHEMA.length; i++) {
         const [sectionName, key] = SETUP_SCHEMA[i];
         const val = valueArray[i] ?? null;
-        if (val === null) continue;
+        if (val === null) {
+          continue;
+        }
 
         if (!sections[sectionName]) {
           sections[sectionName] = { id: "", values: {} };

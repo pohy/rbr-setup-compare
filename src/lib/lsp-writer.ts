@@ -66,9 +66,13 @@ export function setupToLsp(setup: CarSetup): string {
   ];
 
   for (const name of orderedNames) {
-    if (emitted.has(name)) continue;
+    if (emitted.has(name)) {
+      continue;
+    }
     const section = setup.sections[name];
-    if (!section) continue;
+    if (!section) {
+      continue;
+    }
     emitted.add(name);
 
     const id = section.id || (name === "Car" ? "Car" : ":-D");

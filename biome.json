@@ -15,7 +15,12 @@
     },
     "rules": {
       "recommended": true,
-      "style": { "noNonNullAssertion": "error" },
+      "style": {
+        "noNonNullAssertion": "error",
+        "useCollapsedElseIf": "error",
+        "useCollapsedIf": "error",
+        "useBlockStatements": "error"
+      },
       "suspicious": { "noArrayIndexKey": "off" },
       "a11y": { "useSemanticElements": "off" },
       "nursery": {

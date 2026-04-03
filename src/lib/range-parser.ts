@@ -54,7 +54,9 @@ export function parseRangeFile(text: string): RawRangeData {
   }
   function expect(val: string) {
     const t = next();
-    if (t !== val) throw new Error(`Expected "${val}", got "${t}" at token ${pos - 1}`);
+    if (t !== val) {
+      throw new Error(`Expected "${val}", got "${t}" at token ${pos - 1}`);
+    }
   }
   function isNumeric(s: string): boolean {
     return /^[+-]?\d+(\.\d+)?$/.test(s);
@@ -71,7 +73,9 @@ export function parseRangeFile(text: string): RawRangeData {
   // Parse sections
   while (peek() && peek() !== ")") {
     const sectionName = next();
-    if (sectionName === ")") break;
+    if (sectionName === ")") {
+      break;
+    }
 
     expect("(");
     unquote(next()); // skip section id "(null)"
@@ -102,7 +106,9 @@ export function parseRangeFile(text: string): RawRangeData {
     const partials = new Map<string, Partial<RangeTriplet>>();
     for (const [key, value] of kvs) {
       const classified = classifyKey(key);
-      if (!classified) continue;
+      if (!classified) {
+        continue;
+      }
       const existing = partials.get(classified.base) ?? {};
       existing[classified.role] = value;
       partials.set(classified.base, existing);

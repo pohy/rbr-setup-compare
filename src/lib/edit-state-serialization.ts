@@ -3,7 +3,9 @@ import type { DiffMode, EditState } from "./use-setup-editor.ts";
 const VALID_DIFF_MODES: DiffMode[] = ["vs-reference", "vs-original"];
 
 export function serializeEditState(state: EditState | null): unknown {
-  if (state === null) return null;
+  if (state === null) {
+    return null;
+  }
 
   const edits: Record<string, Record<string, number | string>> = {};
   for (const [section, keyEdits] of state.edits) {
@@ -19,14 +21,24 @@ export function serializeEditState(state: EditState | null): unknown {
 }
 
 export function deserializeEditState(raw: unknown): EditState | null {
-  if (raw === null || raw === undefined) return null;
-  if (typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (raw === null || raw === undefined) {
+    return null;
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
 
   const obj = raw as Record<string, unknown>;
 
-  if (typeof obj.sourceName !== "string") return null;
-  if (!obj.sourceSetup || typeof obj.sourceSetup !== "object") return null;
-  if (!obj.edits || typeof obj.edits !== "object") return null;
+  if (typeof obj.sourceName !== "string") {
+    return null;
+  }
+  if (!obj.sourceSetup || typeof obj.sourceSetup !== "object") {
+    return null;
+  }
+  if (!obj.edits || typeof obj.edits !== "object") {
+    return null;
+  }
 
   // Validate sourceSetup has required shape
   const setup = obj.sourceSetup as Record<string, unknown>;

@@ -79,7 +79,9 @@ function App() {
           (editor.editState?.edits.size ?? 0) > 0,
           path,
         );
-        if (confirmMsg && !window.confirm(confirmMsg)) return;
+        if (confirmMsg && !window.confirm(confirmMsg)) {
+          return;
+        }
         // Discard edit if unchecking the edited setup (even without pending edits)
         if (editor.editState?.sourceName === path) {
           editor.discardEdit();
@@ -120,7 +122,9 @@ function App() {
   }, [rbr, loadedPaths, setLoadedPathsArr]);
 
   const restoreFromLocalStorage = useCallback(async () => {
-    if (loadedPathsArr.length === 0 || rbr.carGroups.length === 0) return;
+    if (loadedPathsArr.length === 0 || rbr.carGroups.length === 0) {
+      return;
+    }
 
     const setupsByPath = new Map<string, ScannedSetup>();
     for (const group of rbr.carGroups) {
@@ -133,7 +137,9 @@ function App() {
       .map((p) => setupsByPath.get(p))
       .filter((s): s is ScannedSetup => s !== undefined);
 
-    if (toRestore.length === 0) return;
+    if (toRestore.length === 0) {
+      return;
+    }
 
     const paths = toRestore.map((s) => s.relativePath);
     setLoadingPaths(new Set(paths));
@@ -157,8 +163,12 @@ function App() {
 
   // Restore previously loaded setups after scan completes
   useEffect(() => {
-    if (urlData.current.found) return;
-    if (hasRestoredRef.current || rbr.carGroups.length === 0) return;
+    if (urlData.current.found) {
+      return;
+    }
+    if (hasRestoredRef.current || rbr.carGroups.length === 0) {
+      return;
+    }
     hasRestoredRef.current = true;
     restoreFromLocalStorage();
   }, [rbr.carGroups.length, restoreFromLocalStorage]);
@@ -186,15 +196,21 @@ function App() {
 
       // Reload modified loaded setups
       for (const change of modified) {
-        if (!loadedPaths.has(change.relativePath)) continue;
+        if (!loadedPaths.has(change.relativePath)) {
+          continue;
+        }
 
         // Find the ScannedSetup in the new groups
         let scanned: ScannedSetup | undefined;
         for (const group of newGroups) {
           scanned = group.setups.find((s) => s.relativePath === change.relativePath);
-          if (scanned) break;
+          if (scanned) {
+            break;
+          }
         }
-        if (!scanned) continue;
+        if (!scanned) {
+          continue;
+        }
 
         try {
           const [reloaded] = await rbr.loadSetups([scanned]);
@@ -252,7 +268,9 @@ function App() {
       const edited = editor.getEditedSetup();
       const allSetups = edited ? [...setups, edited] : setups;
       const setup = allSetups[index];
-      if (!setup) return;
+      if (!setup) {
+        return;
+      }
       const lspText = setupToLsp(setup);
       const blob = new Blob([lspText], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
@@ -270,10 +288,14 @@ function App() {
     async (setupName: string) => {
       const fileName = setupName.split("/").pop() ?? setupName;
       const surface = inferSurface(fileName);
-      if (!surface) return null;
+      if (!surface) {
+        return null;
+      }
 
       const group = rbr.carGroups.find((g) => g.setups.some((s) => s.relativePath === setupName));
-      if (!group) return null;
+      if (!group) {
+        return null;
+      }
 
       return rbr.loadRanges(group.carName, surface);
     },
@@ -302,10 +324,14 @@ function App() {
 
   // Restore edit ranges when edit state is restored from localStorage but ranges aren't loaded yet
   useEffect(() => {
-    if (!editor.editState || editRanges) return;
+    if (!editor.editState || editRanges) {
+      return;
+    }
     let cancelled = false;
     loadRangesForSetup(editor.editState.sourceName).then((ranges) => {
-      if (!cancelled && ranges) setEditRanges(ranges);
+      if (!cancelled && ranges) {
+        setEditRanges(ranges);
+      }
     });
     return () => {
       cancelled = true;
@@ -318,7 +344,9 @@ function App() {
       const range = editRanges ? getRangeForKey(editRanges, rawSection, key) : undefined;
 
       editor.updateValueWith(rawSection, key, (currentRaw) => {
-        if (range) return stepValue(currentRaw, direction, range, fine);
+        if (range) {
+          return stepValue(currentRaw, direction, range, fine);
+        }
         // No range: derive step from max decimal precision across all setups
         let maxDecimals = 0;
         for (const s of setups) {
@@ -326,7 +354,9 @@ function App() {
           if (typeof v === "number") {
             const str = String(v);
             const d = str.includes(".") ? str.split(".")[1].length : 0;
-            if (d > maxDecimals) maxDecimals = d;
+            if (d > maxDecimals) {
+              maxDecimals = d;
+            }
           }
         }
         const step = 10 ** -maxDecimals;
@@ -343,7 +373,9 @@ function App() {
   const handleCellEdit = useCallback(
     (displaySection: string, key: string, displayValue: string) => {
       const num = parseFloat(displayValue);
-      if (Number.isNaN(num)) return;
+      if (Number.isNaN(num)) {
+        return;
+      }
       const rawValue = unsanitizeValue(key, num);
       // Reverse section rename: display name → raw name
       const rawSection = SECTION_UNRENAMES[displaySection] ?? displaySection;
@@ -361,7 +393,9 @@ function App() {
   );
 
   const handleToggleDiffMode = useCallback(() => {
-    if (!editor.editState) return;
+    if (!editor.editState) {
+      return;
+    }
     editor.setDiffMode(
       editor.editState.diffMode === "vs-reference" ? "vs-original" : "vs-reference",
     );
@@ -369,7 +403,9 @@ function App() {
 
   const handleSaveEdit = useCallback(() => {
     const edited = editor.getEditedSetup();
-    if (!edited) return;
+    if (!edited) {
+      return;
+    }
     const lspText = setupToLsp(edited);
     const blob = new Blob([lspText], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -384,11 +420,17 @@ function App() {
   const handleOverwriteEdit = useCallback(
     async (fileName: string) => {
       const edited = editor.getEditedSetup();
-      if (!edited) return;
+      if (!edited) {
+        return;
+      }
       const sourceName = editor.editState?.sourceName ?? "";
-      if (!isOverwritable(sourceName)) return;
+      if (!isOverwritable(sourceName)) {
+        return;
+      }
       const originalHandle = fileHandles.current.get(sourceName);
-      if (!originalHandle) return;
+      if (!originalHandle) {
+        return;
+      }
 
       const lspText = setupToLsp(edited);
       const originalFileName = sourceName.split("/").pop() ?? "";
@@ -399,7 +441,9 @@ function App() {
           await writeFileHandle(originalHandle, lspText);
         } else {
           // Save as new file in the same directory
-          if (!rbr.handle) return;
+          if (!rbr.handle) {
+            return;
+          }
           const pathParts = sourceName.split("/");
           pathParts.pop(); // remove filename
           let dir: FileSystemDirectoryHandle = rbr.handle;
@@ -419,10 +463,14 @@ function App() {
   const handleSaveToSavedGames = useCallback(
     async (fileName: string) => {
       const edited = editor.getEditedSetup();
-      if (!edited) return;
+      if (!edited) {
+        return;
+      }
       const sourceName = editor.editState?.sourceName ?? "";
       const carDir = savedGamesCarDir(sourceName);
-      if (!carDir || !rbr.handle) return;
+      if (!carDir || !rbr.handle) {
+        return;
+      }
 
       const lspText = setupToLsp(edited);
       try {
@@ -486,7 +534,9 @@ function App() {
   }, [editor]);
 
   const editConfig: EditConfig | undefined = (() => {
-    if (!editor.editState || sourceIndex < 0) return undefined;
+    if (!editor.editState || sourceIndex < 0) {
+      return undefined;
+    }
     const canToggleDiffMode = sourceIndex !== 0;
     const effectiveDiffMode = canToggleDiffMode ? editor.editState.diffMode : "vs-reference";
     const diffRefIndex = effectiveDiffMode === "vs-original" ? sourceIndex : 0;
@@ -607,7 +657,9 @@ function App() {
                   restoreFromLocalStorage();
                 } else {
                   const msg = getClearAllConfirmMessage((editor.editState?.edits.size ?? 0) > 0);
-                  if (!confirm(msg)) return;
+                  if (!confirm(msg)) {
+                    return;
+                  }
                   editor.discardEdit();
                   setSetups([]);
                   setLoadedPathsArr([]);

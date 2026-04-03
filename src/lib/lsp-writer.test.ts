@@ -284,7 +284,9 @@ describe("setupToLsp", () => {
           inSection = true;
           continue;
         }
-        if (inSection && /^\s{2}\w/.test(line)) break; // next section
+        if (inSection && /^\s{2}\w/.test(line)) {
+          break; // next section
+        }
         if (inSection && /^\s{3}\w/.test(line)) {
           keys.push(line.trim().split(/\t/)[0]);
         }
@@ -390,7 +392,9 @@ describe("setupToLsp", () => {
       const serializedTokens = tokenize(serialized);
 
       for (const section of Object.values(parsed.sections)) {
-        if (!section.rawValues) continue;
+        if (!section.rawValues) {
+          continue;
+        }
         for (const raw of Object.values(section.rawValues)) {
           const rawParts = raw.split(" ");
           for (const part of rawParts) {

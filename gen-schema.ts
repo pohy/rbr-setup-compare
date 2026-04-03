@@ -52,12 +52,16 @@ for (const file of files) {
     const content = readFileSync(file, "utf-8");
     const setup = parseLspSetup(content, file);
     for (const [sectionName, section] of Object.entries(setup.sections)) {
-      if (SECTION_DISCARD.has(sectionName)) continue;
+      if (SECTION_DISCARD.has(sectionName)) {
+        continue;
+      }
 
       // Skip Engine section if it only has Features_NGP
       if (sectionName === "Engine") {
         const keys = Object.keys(section.values);
-        if (keys.length === 1 && keys[0] === "Features_NGP") continue;
+        if (keys.length === 1 && keys[0] === "Features_NGP") {
+          continue;
+        }
       }
 
       for (const key of Object.keys(section.values)) {

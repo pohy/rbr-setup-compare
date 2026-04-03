@@ -65,7 +65,9 @@ export function ComparisonTable({
 
   useEffect(() => {
     const el = paramColRef.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     setParamColWidth(el.offsetWidth);
     const ro = new ResizeObserver(() => setParamColWidth(el.offsetWidth));
     ro.observe(el);
@@ -89,7 +91,9 @@ export function ComparisonTable({
     (e: React.DragEvent<HTMLElement>, index: number) => {
       e.preventDefault();
       const current = dragIndexRef.current;
-      if (current === null || current === index) return;
+      if (current === null || current === index) {
+        return;
+      }
       onReorderSetup(current, index);
       dragIndexRef.current = index;
       setDragIndex(index);
@@ -239,7 +243,9 @@ export function ComparisonTable({
                 return r.isDifferent;
               })
             : section.rows;
-          if (diffsOnly && visibleRows.length === 0) return null;
+          if (diffsOnly && visibleRows.length === 0) {
+            return null;
+          }
           return (
             <Section
               key={section.sectionName}
@@ -287,7 +293,9 @@ function Section({
         style={{ gridColumn: `span ${colCount}` }}
         onClick={onToggle}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") onToggle();
+          if (e.key === "Enter" || e.key === " ") {
+            onToggle();
+          }
         }}
       >
         <div className="sticky left-0 w-fit whitespace-nowrap border-l-accent p-2 font-medium text-text-primary text-xs uppercase tracking-wider">
@@ -306,7 +314,9 @@ function Section({
       {/* Data rows */}
       {!isCollapsed &&
         rows.map((row, rowIndex) => {
-          if (row.type === "split") return null;
+          if (row.type === "split") {
+            return null;
+          }
           const nextRow = rows[rowIndex + 1];
           const ratios = nextRow?.type === "split" ? nextRow.ratios : undefined;
           return (
@@ -403,10 +413,14 @@ function Section({
                               : (() => {
                                   let maxDec = 0;
                                   for (const v of row.values) {
-                                    if (v === null) continue;
+                                    if (v === null) {
+                                      continue;
+                                    }
                                     const s = String(v);
                                     const d = s.includes(".") ? s.split(".")[1].length : 0;
-                                    if (d > maxDec) maxDec = d;
+                                    if (d > maxDec) {
+                                      maxDec = d;
+                                    }
                                   }
                                   return 10 ** -maxDec;
                                 })()

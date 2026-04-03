@@ -31,21 +31,31 @@ export function DropZone({
 
     const handleDragEnter = (e: DragEvent) => {
       e.preventDefault();
-      if (!hasFileType(e)) return;
+      if (!hasFileType(e)) {
+        return;
+      }
       dragCounter++;
-      if (dragCounter === 1) setIsDragging(true);
+      if (dragCounter === 1) {
+        setIsDragging(true);
+      }
     };
     const handleDragLeave = (e: DragEvent) => {
       e.preventDefault();
-      if (!hasFileType(e)) return;
+      if (!hasFileType(e)) {
+        return;
+      }
       dragCounter--;
-      if (dragCounter === 0) setIsDragging(false);
+      if (dragCounter === 0) {
+        setIsDragging(false);
+      }
     };
     const handleDragOver = (e: DragEvent) => {
       e.preventDefault();
     };
     const handleDrop = (e: DragEvent) => {
-      if (!hasFileType(e)) return;
+      if (!hasFileType(e)) {
+        return;
+      }
       e.preventDefault();
       dragCounter = 0;
       setIsDragging(false);
@@ -79,7 +89,9 @@ export function DropZone({
         )}
         onClick={onBrowse}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") onBrowse();
+          if (e.key === "Enter" || e.key === " ") {
+            onBrowse();
+          }
         }}
       >
         <p

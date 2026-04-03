@@ -18,7 +18,9 @@ const PopoverContext = createContext<(() => void) | null>(null);
 
 export function usePopoverClose() {
   const close = use(PopoverContext);
-  if (!close) throw new Error("usePopoverClose must be used within a PopoverMenu");
+  if (!close) {
+    throw new Error("usePopoverClose must be used within a PopoverMenu");
+  }
   return close;
 }
 
@@ -47,7 +49,9 @@ export function PopoverMenu({ children, label, className, disabled }: Props) {
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
     onOpenChange: (open) => {
-      if (!open) setIsPinned(false);
+      if (!open) {
+        setIsPinned(false);
+      }
       setIsOpen(open);
     },
     middleware: [
@@ -168,7 +172,9 @@ function Item({ onClick, keepOpen, variant, disabled, children, ...rest }: ItemP
       disabled={disabled}
       onClick={(e) => {
         onClick?.(e);
-        if (!keepOpen) close?.();
+        if (!keepOpen) {
+          close?.();
+        }
       }}
       className={clsx(
         "w-full whitespace-nowrap px-2 py-0.5 text-left text-xs",

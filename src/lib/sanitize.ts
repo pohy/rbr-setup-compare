@@ -25,7 +25,9 @@ export function getModifier(key: string): number {
 
 export function unsanitizeValue(key: string, displayValue: number): number {
   const modifier = getModifier(key);
-  if (modifier === 1) return displayValue;
+  if (modifier === 1) {
+    return displayValue;
+  }
   return displayValue / modifier;
 }
 
@@ -83,12 +85,16 @@ export function sanitizeSetup(setup: CarSetup): CarSetup {
 
   for (const [sectionName, section] of Object.entries(setup.sections)) {
     // Discard right-side sections
-    if (SECTION_DISCARD.has(sectionName)) continue;
+    if (SECTION_DISCARD.has(sectionName)) {
+      continue;
+    }
 
     // Remove Engine section if it only has Features_NGP
     if (sectionName === "Engine") {
       const keys = Object.keys(section.values);
-      if (keys.length === 1 && keys[0] === "Features_NGP") continue;
+      if (keys.length === 1 && keys[0] === "Features_NGP") {
+        continue;
+      }
     }
 
     // Sanitize values

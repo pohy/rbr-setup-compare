@@ -54,7 +54,9 @@ export function mapRangesToSetup(raw: RawRangeData): RangeMap {
 
   for (const [rangeSection, triplets] of raw) {
     const setupSection = SECTION_MAP[rangeSection];
-    if (!setupSection) continue;
+    if (!setupSection) {
+      continue;
+    }
 
     for (const [rangeKey, triplet] of triplets) {
       // Special expansion: DiffMapLock in ControlOptions
