@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "typecheck": "tsc -b",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
