@@ -115,6 +115,80 @@ describe("deriveEditedSetup", () => {
     expect(result.sections.Car.values.MaxSteeringLock).toBe(0.8);
   });
 
+  it("mirrors L-side edits to R-side sections", () => {
+    const source: CarSetup = {
+      name: "test",
+      sections: {
+        SpringDamperLF: { id: ":-D", values: { SpringStiffness: 38000, DampingBump: 4950 } },
+        SpringDamperRF: { id: ":-D", values: { SpringStiffness: 38000, DampingBump: 4800 } },
+        SpringDamperLB: { id: ":-D", values: { SpringStiffness: 31600 } },
+        SpringDamperRB: { id: ":-D", values: { SpringStiffness: 31600 } },
+        TyreLF: { id: ":-D", values: { Pressure: 220000 } },
+        TyreRF: { id: ":-D", values: { Pressure: 220000 } },
+        Car: { id: "Car", values: { MaxSteeringLock: 0.75 } },
+      },
+    };
+    const edits = new Map<string, Map<string, number | string>>();
+    edits.set("SpringDamperLF", new Map([["SpringStiffness", 40000]]));
+    edits.set("TyreLF", new Map([["Pressure", 200000]]));
+
+    const result = deriveEditedSetup(source, edits);
+
+    // L-side has edits applied
+    expect(result.sections.SpringDamperLF.values.SpringStiffness).toBe(40000);
+    expect(result.sections.TyreLF.values.Pressure).toBe(200000);
+    // R-side mirrors edited keys
+    expect(result.sections.SpringDamperRF.values.SpringStiffness).toBe(40000);
+    expect(result.sections.TyreRF.values.Pressure).toBe(200000);
+    // R-side non-edited keys preserve original values
+    expect(result.sections.SpringDamperRF.values.DampingBump).toBe(4800);
+    // Non-mirrored sections unaffected
+    expect(result.sections.Car.values.MaxSteeringLock).toBe(0.75);
+    // RB not affected (LB wasn't edited)
+    expect(result.sections.SpringDamperRB.values.SpringStiffness).toBe(31600);
+  });
+
+  it("mirrors edits and clears rawValues on R-side for mirrored keys", () => {
+    const source: CarSetup = {
+      name: "test",
+      sections: {
+        SpringDamperLB: {
+          id: ":-D",
+          values: { SpringStiffness: 31600 },
+          rawValues: { SpringStiffness: "31600.000000" },
+        },
+        SpringDamperRB: {
+          id: ":-D",
+          values: { SpringStiffness: 31600 },
+          rawValues: { SpringStiffness: "31600.000000" },
+        },
+      },
+    };
+    const edits = new Map<string, Map<string, number | string>>();
+    edits.set("SpringDamperLB", new Map([["SpringStiffness", 25000]]));
+
+    const result = deriveEditedSetup(source, edits);
+
+    expect(result.sections.SpringDamperRB.values.SpringStiffness).toBe(25000);
+    expect(result.sections.SpringDamperRB.rawValues?.SpringStiffness).toBeUndefined();
+  });
+
+  it("does not mutate source R-side sections when mirroring", () => {
+    const source: CarSetup = {
+      name: "test",
+      sections: {
+        SpringDamperLF: { id: ":-D", values: { SpringStiffness: 38000 } },
+        SpringDamperRF: { id: ":-D", values: { SpringStiffness: 38000 } },
+      },
+    };
+    const edits = new Map<string, Map<string, number | string>>();
+    edits.set("SpringDamperLF", new Map([["SpringStiffness", 40000]]));
+
+    deriveEditedSetup(source, edits);
+
+    expect(source.sections.SpringDamperRF.values.SpringStiffness).toBe(38000);
+  });
+
   it("ignores edits for nonexistent sections", () => {
     const source = makeSetup();
     const edits = new Map<string, Map<string, number | string>>();

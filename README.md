@@ -24,10 +24,56 @@ Compare Richard Burns Rally setup files side by side.
 - **Setup management** — add, remove individual setups, or clear all at once
 - **Shareable links** — copy a URL that encodes the current comparison, so others can open it without needing the original files
 
+## MCP Server (LLM Setup Tuning)
+
+An MCP server exposes setup reading, comparison, and editing as tools callable by LLMs (e.g. via Claude Code). This lets you ask an LLM to tune your car setups conversationally.
+
+### Setup
+
+Add to your Claude Code MCP settings (project or global):
+
+```json
+{
+  "mcpServers": {
+    "rbrtune": {
+      "command": "pnpm",
+      "args": ["tsx", "src/mcp/main.ts"],
+      "cwd": "/path/to/rbr-setup-compare"
+    }
+  }
+}
+```
+
+On first use, call the `set_rbr_directory` tool with your RBR install path. This is persisted across sessions.
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `set_rbr_directory` | Configure the RBR install path |
+| `list_cars` | List cars, setups, surfaces, and MCP-managed status |
+| `read_setup` | Read a setup with labels, units, and display values |
+| `read_ranges` | Get valid min/max/step ranges for a car + surface |
+| `compare_setups` | Diff two or more setups side by side |
+| `propose_change` | Preview changes (absolute or relative %) with range clamping |
+| `apply_changes` | Write validated changes to disk as MCP-managed files |
+
+### Safety
+
+- **Copy-on-write**: original setup files are never overwritten. New files get a `; mcp-managed` header comment (invisible to the game).
+- **MCP-managed files** can be overwritten in subsequent edits. Non-managed files always create a new copy.
+- **Range clamping**: all values are validated against the car's range files. Out-of-range values are clamped.
+- **Symmetric editing**: only left-side sections are accepted; right-side is mirrored automatically.
+- **Writes target `SavedGames/`** only.
+
+### Logs
+
+Debug logs are written to `rbr-tuner.log` in the project root.
+
 ## Credits
 
 - [pmfrlyn/RBRTools](https://github.com/pmfrlyn/RBRTools) — Python parser used as reference for the `.lsp` file format and parsing logic
 - [pshires/RbrSetupCompare](https://github.com/pshires/RbrSetupCompare) — Ruby app used as reference for unit conversions and value sanitization
 - [RBR Setup Studio](https://rbr-setup-studio.web.app/) — UI/UX reference for setup value display
 - [RallySimFans](https://rallysimfans.hu) — community platform whose directory structure conventions (`rsfdata/`, car naming, RSF IDs) the app supports
-- [NGP6 physics plugin](https://rallysimfans.hu) — defines the modern `.lsp` format variant and `_NGP` parameters
+- [NGP7 physics plugin](https://rallysimfans.hu) — defines the modern `.lsp` format variant and `_NGP` parameters

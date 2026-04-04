@@ -26,7 +26,9 @@ class MockFileSystemObserver {
 
 // --- Mock scanRbrDirectory ---
 
-const mockScanResult: CarGroup[] = [{ carName: "TestCar", setups: [], rangeFiles: [] }];
+const mockScanResult: CarGroup[] = [
+  { carName: "TestCar", carDir: "TestCar_ngp6", setups: [], rangeFiles: [] },
+];
 
 vi.mock("./rbr-scanner.ts", () => ({
   scanRbrDirectory: vi.fn().mockImplementation(() => Promise.resolve(mockScanResult)),
