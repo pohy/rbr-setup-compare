@@ -1,8 +1,10 @@
 import { useCallback, useMemo } from "react";
 import { deserializeEditState, serializeEditState } from "./edit-state-serialization.ts";
 import type { CarSetup } from "./lsp-parser.ts";
-import type { RangeTriplet } from "./range-parser.ts";
+import { clampToRange, deepCloneSetup, deriveEditedSetup, stepValue } from "./setup-edits.ts";
 import { usePersistentState } from "./use-persistent-state.ts";
+
+export { clampToRange, deriveEditedSetup, stepValue };
 
 export type DiffMode = "vs-reference" | "vs-original";
 
@@ -12,60 +14,6 @@ export type EditState = {
   edits: Map<string, Map<string, number | string>>;
   diffMode: DiffMode;
 };
-
-function deepCloneSetup(setup: CarSetup): CarSetup {
-  const sections: CarSetup["sections"] = {};
-  for (const [name, section] of Object.entries(setup.sections)) {
-    sections[name] = {
-      id: section.id,
-      values: { ...section.values },
-      ...(section.rawValues ? { rawValues: { ...section.rawValues } } : {}),
-    };
-  }
-  return { name: setup.name, sections };
-}
-
-export function deriveEditedSetup(
-  sourceSetup: CarSetup,
-  edits: Map<string, Map<string, number | string>>,
-): CarSetup {
-  const clone = deepCloneSetup(sourceSetup);
-
-  for (const [section, keyEdits] of edits) {
-    const sec = clone.sections[section];
-    if (!sec) {
-      continue;
-    }
-    for (const [key, value] of keyEdits) {
-      sec.values[key] = value;
-      // Clear rawValues for edited keys so setupToLsp uses the new value
-      if (sec.rawValues) {
-        delete sec.rawValues[key];
-      }
-    }
-  }
-
-  return clone;
-}
-
-export function clampToRange(value: number, range: RangeTriplet): number {
-  const clamped = Math.min(Math.max(value, range.min), range.max);
-  if (range.step === 0) {
-    return clamped;
-  }
-  return range.min + Math.round((clamped - range.min) / range.step) * range.step;
-}
-
-export function stepValue(
-  current: number,
-  direction: 1 | -1,
-  range: RangeTriplet,
-  fine: boolean,
-): number {
-  const delta = fine ? range.step / 10 : range.step;
-  const fineRange = fine ? { ...range, step: delta } : range;
-  return clampToRange(current + direction * delta, fineRange);
-}
 
 export function useSetupEditor() {
   const persistOptions = useMemo(

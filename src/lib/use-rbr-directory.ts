@@ -118,7 +118,7 @@ export function useRbrDirectory() {
   const loadSetups = useCallback(async (selected: ScannedSetup[]): Promise<CarSetup[]> => {
     const results: CarSetup[] = [];
     for (const item of selected) {
-      const text = await readFileHandle(item.fileHandle);
+      const text = await readFileHandle(item.fileRef);
       const setup = parseLspSetup(text, item.fileName);
       results.push(setup);
     }
@@ -136,7 +136,7 @@ export function useRbrDirectory() {
         return null;
       }
       try {
-        const text = await readFileHandle(entry.fileHandle);
+        const text = await readFileHandle(entry.fileRef);
         const raw = parseRangeFile(text);
         return mapRangesToSetup(raw);
       } catch (e) {

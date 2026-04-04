@@ -42,5 +42,6 @@ export default defineConfig({
   ],
   test: {
     setupFiles: ["./src/test-setup.ts"],
+    exclude: ["dist-mcp/**", "node_modules/**"],
   },
 });
