@@ -4,7 +4,11 @@ import { ComparisonTable } from "./components/ComparisonTable.tsx";
 import { DropZone } from "./components/DropZone.tsx";
 import { SetupBrowser } from "./components/SetupBrowser.tsx";
 import { compareSetups } from "./lib/compare.ts";
-import { getClearAllConfirmMessage, getUncheckConfirmMessage } from "./lib/confirm-messages.ts";
+import {
+  getClearAllConfirmMessage,
+  getUncheckConfirmMessage,
+  promptSaveAs,
+} from "./lib/confirm-messages.ts";
 import { loadExampleSetups } from "./lib/example-setups.ts";
 import { writeFileHandle } from "./lib/fs-access.ts";
 import type { CarSetup } from "./lib/lsp-parser.ts";
@@ -419,80 +423,116 @@ function App() {
     URL.revokeObjectURL(url);
   }, [editor]);
 
-  const handleOverwriteEdit = useCallback(
-    async (fileName: string) => {
-      const edited = editor.getEditedSetup();
-      if (!edited) {
+  const handleOverwriteEdit = useCallback(async () => {
+    const edited = editor.getEditedSetup();
+    if (!edited) {
+      return;
+    }
+    const sourceName = editor.editState?.sourceName ?? "";
+    if (!isOverwritable(sourceName)) {
+      return;
+    }
+    const originalHandle = fileHandles.current.get(sourceName);
+    if (!originalHandle) {
+      return;
+    }
+    try {
+      await writeFileHandle(originalHandle, setupToLsp(edited));
+      editor.bakeEdits();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to write file");
+    }
+  }, [editor]);
+
+  const handleRenameAndSave = useCallback(async () => {
+    const edited = editor.getEditedSetup();
+    if (!edited) {
+      return;
+    }
+    const sourceName = editor.editState?.sourceName ?? "";
+    if (!isOverwritable(sourceName) || !rbr.handle) {
+      return;
+    }
+
+    try {
+      const pathParts = sourceName.split("/");
+      pathParts.pop(); // remove filename
+      let dir: FileSystemDirectoryHandle = rbr.handle;
+      for (const part of pathParts) {
+        dir = await dir.getDirectoryHandle(part);
+      }
+      const defaultName = sourceName.split("/").pop() ?? sourceName;
+
+      const fileName = await promptSaveAs("Save to RBR folder as:", defaultName, {
+        prompt: (msg, def) => window.prompt(msg, def),
+        confirm: (msg) => window.confirm(msg),
+        fileExists: async (name) => {
+          try {
+            await dir.getFileHandle(name);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+      });
+      if (!fileName) {
         return;
       }
-      const sourceName = editor.editState?.sourceName ?? "";
-      if (!isOverwritable(sourceName)) {
-        return;
-      }
-      const originalHandle = fileHandles.current.get(sourceName);
-      if (!originalHandle) {
+
+      const newHandle = await dir.getFileHandle(fileName, { create: true });
+      await writeFileHandle(newHandle, setupToLsp(edited));
+      editor.bakeEdits();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to write file");
+    }
+  }, [editor, rbr.handle]);
+
+  const handleSaveToSavedGames = useCallback(async () => {
+    const edited = editor.getEditedSetup();
+    if (!edited) {
+      return;
+    }
+    const sourceName = editor.editState?.sourceName ?? "";
+    const carDir = savedGamesCarDir(sourceName);
+    if (!carDir || !rbr.handle) {
+      return;
+    }
+    const defaultName = sourceName.split("/").pop() ?? sourceName;
+
+    try {
+      const savedGamesDir = await rbr.handle.getDirectoryHandle("SavedGames", { create: true });
+      const carDirHandle = await savedGamesDir.getDirectoryHandle(carDir, { create: true });
+
+      const fileName = await promptSaveAs("Save to SavedGames as:", defaultName, {
+        prompt: (msg, def) => window.prompt(msg, def),
+        confirm: (msg) => window.confirm(msg),
+        fileExists: async (name) => {
+          try {
+            await carDirHandle.getFileHandle(name);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+      });
+      if (!fileName) {
         return;
       }
 
       const lspText = setupToLsp(edited);
-      const originalFileName = sourceName.split("/").pop() ?? "";
+      const newHandle = await carDirHandle.getFileHandle(fileName, { create: true });
+      await writeFileHandle(newHandle, lspText);
 
-      try {
-        if (fileName === originalFileName) {
-          // Overwrite original
-          await writeFileHandle(originalHandle, lspText);
-        } else {
-          // Save as new file in the same directory
-          if (!rbr.handle) {
-            return;
-          }
-          const pathParts = sourceName.split("/");
-          pathParts.pop(); // remove filename
-          let dir: FileSystemDirectoryHandle = rbr.handle;
-          for (const part of pathParts) {
-            dir = await dir.getDirectoryHandle(part);
-          }
-          const newHandle = await dir.getFileHandle(fileName, { create: true });
-          await writeFileHandle(newHandle, lspText);
-        }
-      } catch (e) {
-        alert(e instanceof Error ? e.message : "Failed to write file");
-      }
-    },
-    [editor, rbr.handle],
-  );
-
-  const handleSaveToSavedGames = useCallback(
-    async (fileName: string) => {
-      const edited = editor.getEditedSetup();
-      if (!edited) {
-        return;
-      }
-      const sourceName = editor.editState?.sourceName ?? "";
-      const carDir = savedGamesCarDir(sourceName);
-      if (!carDir || !rbr.handle) {
-        return;
-      }
-
-      const lspText = setupToLsp(edited);
-      try {
-        const savedGamesDir = await rbr.handle.getDirectoryHandle("SavedGames", { create: true });
-        const carDirHandle = await savedGamesDir.getDirectoryHandle(carDir, { create: true });
-        const newHandle = await carDirHandle.getFileHandle(fileName, { create: true });
-        await writeFileHandle(newHandle, lspText);
-
-        const newPath = `SavedGames/${carDir}/${fileName}`;
-        const savedSetup = { ...edited, name: newPath };
-        setSetups((prev) => [...prev, savedSetup]);
-        fileHandles.current.set(newPath, newHandle);
-        setLoadedPathsArr((prev) => [...prev, newPath]);
-        editor.relocateSource(newPath);
-      } catch (e) {
-        alert(e instanceof Error ? e.message : "Failed to write file");
-      }
-    },
-    [editor, rbr.handle, setLoadedPathsArr],
-  );
+      const newPath = `SavedGames/${carDir}/${fileName}`;
+      const savedSetup = { ...edited, name: newPath };
+      setSetups((prev) => [...prev, savedSetup]);
+      fileHandles.current.set(newPath, newHandle);
+      setLoadedPathsArr((prev) => [...prev, newPath]);
+      editor.relocateSource(newPath);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to write file");
+    }
+  }, [editor, rbr.handle, setLoadedPathsArr]);
 
   const handleShare = useCallback(async () => {
     const result = buildShareUrl(setups, diffsOnly);
@@ -559,6 +599,7 @@ function App() {
         fileHandles.current.has(editor.editState?.sourceName ?? "") &&
         isOverwritable(editor.editState?.sourceName ?? ""),
       onOverwrite: handleOverwriteEdit,
+      onRenameAndSave: handleRenameAndSave,
       canSaveToSavedGames:
         !isOverwritable(editor.editState?.sourceName ?? "") &&
         fileHandles.current.has(editor.editState?.sourceName ?? "") &&

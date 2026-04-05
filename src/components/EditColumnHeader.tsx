@@ -8,10 +8,12 @@ type Props = {
   onDiscard: () => void;
   onSave: () => void;
   canOverwrite: boolean;
-  onOverwrite: (fileName: string) => void;
+  onOverwrite: () => void;
+  onRenameAndSave: () => void;
   canSaveToSavedGames: boolean;
-  onSaveToSavedGames: (fileName: string) => void;
+  onSaveToSavedGames: () => void;
   canToggleDiffMode: boolean;
+  hasEdits: boolean;
 };
 
 export function EditColumnHeader({
@@ -22,9 +24,11 @@ export function EditColumnHeader({
   onSave,
   canOverwrite,
   onOverwrite,
+  onRenameAndSave,
   canSaveToSavedGames,
   onSaveToSavedGames,
   canToggleDiffMode,
+  hasEdits,
 }: Props) {
   return (
     <PopoverMenu
@@ -35,6 +39,32 @@ export function EditColumnHeader({
       }
       className="flex items-center justify-between gap-2"
     >
+      {canOverwrite && (
+        <>
+          <PopoverMenu.Item
+            onClick={() => {
+              if (window.confirm(`Overwrite ${name}?`)) {
+                onOverwrite();
+              }
+            }}
+            variant="accent"
+          >
+            Save by overwriting
+          </PopoverMenu.Item>
+          <PopoverMenu.Item onClick={onRenameAndSave} variant="accent">
+            Rename and save
+          </PopoverMenu.Item>
+        </>
+      )}
+      {canSaveToSavedGames && (
+        <PopoverMenu.Item onClick={onSaveToSavedGames} variant="accent">
+          Save to SavedGames
+        </PopoverMenu.Item>
+      )}
+      <PopoverMenu.Item onClick={onSave} variant="accent">
+        Download
+      </PopoverMenu.Item>
+      <PopoverMenu.Divider />
       <PopoverMenu.Item
         onClick={onToggleDiffMode}
         keepOpen
@@ -48,58 +78,20 @@ export function EditColumnHeader({
         {diffMode === "vs-reference" ? "Compare vs original" : "Compare vs reference"}
       </PopoverMenu.Item>
       <PopoverMenu.Divider />
-      <PopoverMenu.Item onClick={onSave} variant="accent">
-        Download
-      </PopoverMenu.Item>
-      {canOverwrite && (
-        <>
-          <PopoverMenu.Item
-            onClick={() => {
-              if (window.confirm(`Overwrite ${name}?`)) {
-                onOverwrite(name);
-              }
-            }}
-            variant="accent"
-          >
-            Save by overwriting
-          </PopoverMenu.Item>
-          <PopoverMenu.Item
-            onClick={() => {
-              const result = window.prompt("Save to RBR folder as:", name);
-              if (result != null && result !== "") {
-                onOverwrite(result);
-              }
-            }}
-            variant="accent"
-          >
-            Rename and save
-          </PopoverMenu.Item>
-        </>
-      )}
-      {canSaveToSavedGames && (
+      {hasEdits ? (
         <PopoverMenu.Item
           onClick={() => {
-            const result = window.prompt("Save to SavedGames as:", name);
-            if (result != null && result !== "") {
-              onSaveToSavedGames(result);
+            if (window.confirm("Discard all edits?")) {
+              onDiscard();
             }
           }}
-          variant="accent"
+          variant="danger"
         >
-          Save to SavedGames
+          Discard edits
         </PopoverMenu.Item>
+      ) : (
+        <PopoverMenu.Item onClick={onDiscard}>Close editor</PopoverMenu.Item>
       )}
-      <PopoverMenu.Divider />
-      <PopoverMenu.Item
-        onClick={() => {
-          if (window.confirm("Discard all edits?")) {
-            onDiscard();
-          }
-        }}
-        variant="danger"
-      >
-        Discard edits
-      </PopoverMenu.Item>
     </PopoverMenu>
   );
 }

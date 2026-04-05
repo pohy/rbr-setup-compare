@@ -33,6 +33,7 @@ function makeEditConfig(overrides: Partial<EditConfig> = {}): EditConfig {
     onSave: noop,
     canOverwrite: false,
     onOverwrite: noop,
+    onRenameAndSave: noop,
     canSaveToSavedGames: false,
     onSaveToSavedGames: noop,
     ...overrides,
