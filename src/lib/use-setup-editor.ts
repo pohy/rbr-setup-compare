@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { deserializeEditState, serializeEditState } from "./edit-state-serialization.ts";
 import type { CarSetup } from "./lsp-parser.ts";
 import type { RangeTriplet } from "./range-parser.ts";
+import { SECTION_MIRRORS } from "./sanitize.ts";
 import { usePersistentState } from "./use-persistent-state.ts";
 
 export type DiffMode = "vs-reference" | "vs-original";
@@ -32,15 +33,19 @@ export function deriveEditedSetup(
   const clone = deepCloneSetup(sourceSetup);
 
   for (const [section, keyEdits] of edits) {
-    const sec = clone.sections[section];
-    if (!sec) {
-      continue;
-    }
-    for (const [key, value] of keyEdits) {
-      sec.values[key] = value;
-      // Clear rawValues for edited keys so setupToLsp uses the new value
-      if (sec.rawValues) {
-        delete sec.rawValues[key];
+    for (const target of [section, SECTION_MIRRORS[section]]) {
+      if (!target) {
+        continue;
+      }
+      const sec = clone.sections[target];
+      if (!sec) {
+        continue;
+      }
+      for (const [key, value] of keyEdits) {
+        sec.values[key] = value;
+        if (sec.rawValues) {
+          delete sec.rawValues[key];
+        }
       }
     }
   }

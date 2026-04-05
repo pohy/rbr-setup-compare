@@ -115,6 +115,43 @@ describe("deriveEditedSetup", () => {
     expect(result.sections.Car.values.MaxSteeringLock).toBe(0.8);
   });
 
+  it("mirrors L-side edits to the corresponding R-side section", () => {
+    const source: CarSetup = {
+      name: "mirror-test.lsp",
+      sections: {
+        SpringDamperLF: {
+          id: ":-D",
+          values: { SpringStiffness: 50000 },
+          rawValues: { SpringStiffness: "50000" },
+        },
+        SpringDamperRF: {
+          id: ":-D",
+          values: { SpringStiffness: 50000 },
+          rawValues: { SpringStiffness: "50000" },
+        },
+      },
+    };
+    const edits = new Map<string, Map<string, number | string>>();
+    edits.set("SpringDamperLF", new Map([["SpringStiffness", 55000]]));
+
+    const result = deriveEditedSetup(source, edits);
+
+    expect(result.sections.SpringDamperRF.values.SpringStiffness).toBe(55000);
+    expect(result.sections.SpringDamperRF.rawValues?.SpringStiffness).toBeUndefined();
+  });
+
+  it("does not mirror edits for sections without a mirror mapping", () => {
+    const source = makeSetup();
+    const edits = new Map<string, Map<string, number | string>>();
+    edits.set("Car", new Map([["MaxSteeringLock", 0.8]]));
+
+    const result = deriveEditedSetup(source, edits);
+
+    expect(result.sections.Car.values.MaxSteeringLock).toBe(0.8);
+    // No new sections created
+    expect(Object.keys(result.sections)).toEqual(Object.keys(source.sections));
+  });
+
   it("ignores edits for nonexistent sections", () => {
     const source = makeSetup();
     const edits = new Map<string, Map<string, number | string>>();
