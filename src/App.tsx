@@ -96,7 +96,7 @@ function App() {
         try {
           const [loaded] = await rbr.loadSetups([setup]);
           setSetups((prev) => [...prev, { ...loaded, name: path }]);
-          fileHandles.current.set(path, setup.fileHandle);
+          fileHandles.current.set(path, setup.fileRef as FileSystemFileHandle);
           setLoadedPathsArr((prev) => [...prev, path]);
         } finally {
           setLoadingPaths((prev) => {
@@ -151,7 +151,7 @@ function App() {
         const [parsed] = await rbr.loadSetups([setup]);
         results.push({ ...parsed, name: setup.relativePath });
         restoredPaths.push(setup.relativePath);
-        fileHandles.current.set(setup.relativePath, setup.fileHandle);
+        fileHandles.current.set(setup.relativePath, setup.fileRef as FileSystemFileHandle);
       } catch (e) {
         console.error(`[rbr-dir] Failed to restore ${setup.relativePath}:`, e);
       }
@@ -216,7 +216,7 @@ function App() {
           const [reloaded] = await rbr.loadSetups([scanned]);
           const namedSetup = { ...reloaded, name: change.relativePath };
           setSetups((prev) => prev.map((s) => (s.name === change.relativePath ? namedSetup : s)));
-          fileHandles.current.set(change.relativePath, scanned.fileHandle);
+          fileHandles.current.set(change.relativePath, scanned.fileRef as FileSystemFileHandle);
 
           // Update editor source if the modified file is being edited
           if (editor.editState?.sourceName === change.relativePath) {

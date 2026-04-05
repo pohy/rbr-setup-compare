@@ -20,7 +20,9 @@ export async function verifyPermission(handle: FileSystemDirectoryHandle): Promi
   return (await handle.requestPermission({ mode: "read" })) === "granted";
 }
 
-export async function readFileHandle(handle: FileSystemFileHandle): Promise<string> {
+export async function readFileHandle(handle: {
+  getFile(): Promise<{ text(): Promise<string> }>;
+}): Promise<string> {
   const file = await handle.getFile();
   return file.text();
 }
