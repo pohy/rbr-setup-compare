@@ -519,7 +519,7 @@ function CellInput({
       onKeyDown={handleKeyDown}
       autoComplete="off"
       className={clsx(
-        "absolute inset-0 border-accent/60 border-b bg-transparent p-2 text-sm text-text-primary outline-none",
+        "absolute inset-0 z-[2] border-accent/60 border-b bg-transparent p-2 text-sm text-text-primary outline-none",
         padRight && "pr-20",
       )}
     />
