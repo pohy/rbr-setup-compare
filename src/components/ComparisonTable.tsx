@@ -444,8 +444,11 @@ function Section({
                           onReset={() => {
                             editConfig?.onCellReset(section.sectionName, row.key);
                           }}
-                          onStep={(direction, fine) =>
-                            editConfig?.onStep(section.sectionName, row.key, direction, fine)
+                          onStep={
+                            !Number.isNaN(numVal)
+                              ? (direction, fine) =>
+                                  editConfig?.onStep(section.sectionName, row.key, direction, fine)
+                              : undefined
                           }
                           onEditingChange={(editing) => {
                             onCellEditingChange?.(section.sectionName, row.key, editing);

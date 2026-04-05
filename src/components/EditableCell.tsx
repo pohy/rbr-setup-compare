@@ -60,6 +60,7 @@ export function EditableCell({
   }, [editing]);
   const [inputValue, setInputValue] = useState("");
   const [hoverZone, setHoverZone] = useState<HoverZone | null>(null);
+  const [hovered, setHovered] = useState(false);
   const cellRef = useRef<HTMLDivElement>(null);
   const lastValidDiffRef = useRef<number | null>(null);
   const lastValidFillRef = useRef<number | null>(null);
@@ -256,10 +257,21 @@ export function EditableCell({
       }
       onMouseDown={onStep ? handleMouseDown : undefined}
       onMouseMove={onStep && !editing ? handleHoverMove : undefined}
-      onMouseLeave={
-        onStep && !editing
+      onMouseEnter={
+        !onStep && !editing
           ? () => {
-              setHoverZone(null);
+              setHovered(true);
+            }
+          : undefined
+      }
+      onMouseLeave={
+        !editing
+          ? () => {
+              if (onStep) {
+                setHoverZone(null);
+              } else {
+                setHovered(false);
+              }
             }
           : undefined
       }
@@ -281,6 +293,7 @@ export function EditableCell({
     >
       {staleFill && <span data-stale-fill hidden />}
       {onStep && !editing && hoverZone && <ZoneHint zone={hoverZone} />}
+      {!onStep && !editing && hovered && <FullWidthHint />}
       <span className="relative z-[1] flex justify-between gap-2 p-2">
         <span className={clsx(editing && "invisible")}>{displayText}</span>
         {diffNode && (
@@ -376,6 +389,27 @@ function exitDragMode() {
   if (document.pointerLockElement) {
     document.exitPointerLock();
   }
+}
+
+function FullWidthHint() {
+  const accentColor = "var(--color-accent)";
+  const style = {
+    background: `linear-gradient(to right, transparent, ${accentColor}, transparent)`,
+  };
+  return (
+    <>
+      <span
+        data-hover-hint
+        className="pointer-events-none absolute -top-px left-0 h-0.5 w-full"
+        style={style}
+      />
+      <span
+        data-hover-hint
+        className="pointer-events-none absolute -bottom-px left-0 h-0.5 w-full"
+        style={style}
+      />
+    </>
+  );
 }
 
 function ZoneHint({ zone }: { zone: HoverZone }) {

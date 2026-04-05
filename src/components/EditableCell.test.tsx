@@ -468,6 +468,37 @@ describe("EditableCell focus-to-edit", () => {
   });
 });
 
+describe("EditableCell non-steppable hover hint", () => {
+  it("shows full-width accent hint on hover when no onStep", () => {
+    render(<EditableCell value="0.526 -2.416 0.71" onCommit={() => {}} />);
+    const cell = screen.getByRole("button");
+    fireEvent.mouseEnter(cell);
+    const hints = cell.querySelectorAll("[data-hover-hint]");
+    expect(hints.length).toBe(2); // top + bottom
+    // Full width: left-0 w-full
+    for (const hint of hints) {
+      expect(hint.className).toContain("w-full");
+      expect(hint.className).toContain("left-0");
+    }
+  });
+
+  it("hides hint on mouse leave", () => {
+    render(<EditableCell value="0.526 -2.416 0.71" onCommit={() => {}} />);
+    const cell = screen.getByRole("button");
+    fireEvent.mouseEnter(cell);
+    expect(cell.querySelectorAll("[data-hover-hint]").length).toBe(2);
+    fireEvent.mouseLeave(cell);
+    expect(cell.querySelectorAll("[data-hover-hint]").length).toBe(0);
+  });
+
+  it("does not show hint when onStep is provided", () => {
+    render(<EditableCell value={50} onCommit={() => {}} onStep={() => {}} />);
+    const cell = screen.getByRole("button");
+    fireEvent.mouseEnter(cell);
+    expect(cell.querySelectorAll("[data-hover-hint]").length).toBe(0);
+  });
+});
+
 describe("EditableCell diff display", () => {
   beforeEach(() => {
     HTMLElement.prototype.requestPointerLock = vi.fn();
