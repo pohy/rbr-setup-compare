@@ -30,9 +30,10 @@ export type EditConfig = {
   onDiscard: () => void;
   onSave: () => void;
   canOverwrite: boolean;
-  onOverwrite: (fileName: string) => void;
+  onOverwrite: () => void;
+  onRenameAndSave: () => void;
   canSaveToSavedGames: boolean;
-  onSaveToSavedGames: (fileName: string) => void;
+  onSaveToSavedGames: () => void;
 };
 
 type Props = {
@@ -154,9 +155,11 @@ export function ComparisonTable({
                     onSave={editConfig?.onSave ?? (() => {})}
                     canOverwrite={editConfig?.canOverwrite ?? false}
                     onOverwrite={editConfig?.onOverwrite ?? (() => {})}
+                    onRenameAndSave={editConfig?.onRenameAndSave ?? (() => {})}
                     canSaveToSavedGames={editConfig?.canSaveToSavedGames ?? false}
                     onSaveToSavedGames={editConfig?.onSaveToSavedGames ?? (() => {})}
                     canToggleDiffMode={editConfig?.canToggleDiffMode ?? false}
+                    hasEdits={(editConfig?.edits.size ?? 0) > 0}
                   />
                 </div>
               );

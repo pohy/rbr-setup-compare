@@ -398,3 +398,43 @@ describe("useSetupEditor.relocateSource", () => {
     expect(result.current.editState).toBeNull();
   });
 });
+
+describe("bakeEdits", () => {
+  const setup = makeSetup();
+
+  it("bakes edits into source and clears the edits map", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    act(() => result.current.updateValue("SpringDamperLF", "SpringStiffness", 99000));
+
+    expect(result.current.editState?.edits.size).toBe(1);
+
+    act(() => result.current.bakeEdits());
+
+    expect(result.current.editState?.edits.size).toBe(0);
+    expect(
+      result.current.editState?.sourceSetup.sections.SpringDamperLF.values.SpringStiffness,
+    ).toBe(99000);
+  });
+
+  it("preserves sourceName and diffMode", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    act(() => result.current.setDiffMode("vs-reference"));
+    act(() => result.current.updateValue("SpringDamperLF", "SpringStiffness", 99000));
+
+    act(() => result.current.bakeEdits());
+
+    expect(result.current.editState?.sourceName).toBe("test-setup.lsp");
+    expect(result.current.editState?.diffMode).toBe("vs-reference");
+  });
+
+  it("is a no-op when no edit state", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.discardEdit());
+
+    act(() => result.current.bakeEdits());
+
+    expect(result.current.editState).toBeNull();
+  });
+});
