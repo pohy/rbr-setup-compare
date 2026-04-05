@@ -307,6 +307,42 @@ describe("ComparisonTable diffs-only keeps row while editing", () => {
   });
 });
 
+describe("ComparisonTable non-numeric cell stepping", () => {
+  it("does not enable step controls for non-numeric values", () => {
+    const result: ComparisonResult = [
+      {
+        sectionName: "Engine",
+        rows: [
+          {
+            type: "data",
+            key: "Camber",
+            values: ["0.526 -2.416 0.71", "0.526 -2.416 0.71"],
+            isDifferent: false,
+          },
+        ],
+      },
+    ];
+
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1", "edited"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        editConfig={makeEditConfig({ columnIndex: 1, diffRefIndex: 0 })}
+      />,
+    );
+
+    const editCell = screen.getByTestId("edit-cell-Engine-Camber");
+    const cell = editCell.querySelector("[role=button]") as HTMLElement;
+    // Non-numeric cells should use cursor-text (no step zones), not cursor-ew-resize
+    expect(cell.className).toContain("cursor-text");
+    expect(cell.className).not.toContain("cursor-ew-resize");
+  });
+});
+
 describe("ComparisonTable single-setup edge case", () => {
   it("diffs against column 0 when only one setup loaded", () => {
     const result: ComparisonResult = [

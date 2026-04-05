@@ -32,9 +32,11 @@ function App() {
   const [setups, setSetups] = useState<CarSetup[]>(() =>
     urlData.current.found ? urlData.current.setups : [],
   );
-  const [diffsOnly, setDiffsOnly] = useState(() =>
-    urlData.current.found ? urlData.current.diffsOnly : true,
-  );
+  const [diffsOnly, setDiffsOnly] = usePersistentState("rbr-diffs-only", true);
+  // URL-shared data overrides persisted preference (one-time)
+  if (urlData.current.found && urlData.current.diffsOnly !== diffsOnly) {
+    setDiffsOnly(urlData.current.diffsOnly);
+  }
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   // Track which relativePaths from the sidebar are currently loaded
   const [loadedPathsArr, setLoadedPathsArr] = usePersistentState("rbr-loaded-paths", []);

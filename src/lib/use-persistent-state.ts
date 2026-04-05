@@ -5,6 +5,7 @@ type StorageMap = {
   "rbr-loaded-paths": string[];
   "rbr-setup-filter": string;
   "rbr-edit-state": EditState | null;
+  "rbr-diffs-only": boolean;
 };
 
 type StorageKey = keyof StorageMap;
