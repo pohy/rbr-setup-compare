@@ -34,13 +34,19 @@ for (const [raw, display] of Object.entries(SECTION_RENAMES)) {
 
 function App() {
   const urlData = useRef(hydrateFromUrl());
-  const [setups, setSetups] = useState<CarSetup[]>(() =>
+  const [isViewingShared, setIsViewingShared] = useState(urlData.current.found);
+  const [sharedSetups, setSharedSetups] = useState<CarSetup[]>(() =>
     urlData.current.found ? urlData.current.setups : [],
   );
+  const [setups, setSetups] = useState<CarSetup[]>([]);
   const [diffsOnly, setDiffsOnly] = usePersistentState("rbr-diffs-only", true);
   // URL-shared data overrides persisted preference (one-time)
-  if (urlData.current.found && urlData.current.diffsOnly !== diffsOnly) {
-    setDiffsOnly(urlData.current.diffsOnly);
+  const hasAppliedSharedDiffsRef = useRef(false);
+  if (!hasAppliedSharedDiffsRef.current && urlData.current.found) {
+    hasAppliedSharedDiffsRef.current = true;
+    if (urlData.current.diffsOnly !== diffsOnly) {
+      setDiffsOnly(urlData.current.diffsOnly);
+    }
   }
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   // Track which relativePaths from the sidebar are currently loaded
@@ -188,9 +194,6 @@ function App() {
 
   // Restore previously loaded setups after scan completes
   useEffect(() => {
-    if (urlData.current.found) {
-      return;
-    }
     if (hasRestoredRef.current || rbr.carGroups.length === 0) {
       return;
     }
@@ -201,9 +204,6 @@ function App() {
 
   // Restore manually loaded setups when no FS API directory is available
   useEffect(() => {
-    if (urlData.current.found) {
-      return;
-    }
     if (hasRestoredManualRef.current || !rbr.isReady) {
       return;
     }
@@ -589,11 +589,42 @@ function App() {
     return () => clearTimeout(id);
   }, [setups, diffsOnly]);
 
+  // --- Shared view handlers ---
+  const handleSaveSharedSetup = useCallback(
+    (index: number) => {
+      const setup = sharedSetups[index];
+      if (!setup) {
+        return;
+      }
+      const lspText = setupToLsp(setup);
+      const blob = new Blob([lspText], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const fileName = setup.name.split("/").pop() ?? setup.name;
+      a.download = fileName.endsWith(".lsp") ? fileName : `${fileName}.lsp`;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+    [sharedSetups],
+  );
+
+  const handleReorderSharedSetup = useCallback((from: number, to: number) => {
+    setSharedSetups((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }, []);
+
   // Build the comparison, including the edited setup as the last column if editing
   // Gate on source setup being loaded — on restore, editState may exist before setups are populated
-  const sourceIndex = editor.editState
-    ? setups.findIndex((s) => s.name === editor.editState?.sourceName)
-    : -1;
+  const activeSetups = isViewingShared ? sharedSetups : setups;
+  const sourceIndex =
+    !isViewingShared && editor.editState
+      ? setups.findIndex((s) => s.name === editor.editState?.sourceName)
+      : -1;
   // When source IS the reference (index 0), orig and ref are the same column —
   // reset diffMode so it doesn't leak a stale toggle state after reorder.
   useEffect(() => {
@@ -603,7 +634,7 @@ function App() {
   }, [sourceIndex, editor]);
 
   const editedSetup = sourceIndex >= 0 ? editor.getEditedSetup() : null;
-  const setupsForComparison = editedSetup ? [...setups, editedSetup] : setups;
+  const setupsForComparison = editedSetup ? [...activeSetups, editedSetup] : activeSetups;
   const comparison = setupsForComparison.length >= 1 ? compareSetups(setupsForComparison) : null;
 
   const setupNames = setupsForComparison.map((s) => s.name.split("/").pop() ?? s.name);
@@ -647,8 +678,8 @@ function App() {
     };
   })();
 
-  const showSidebar = rbr.carGroups.length > 0 && !sidebarDismissed;
-  const hasContent = setups.length > 0 || showSidebar;
+  const showSidebar = rbr.carGroups.length > 0 && !sidebarDismissed && !isViewingShared;
+  const hasContent = isViewingShared || setups.length > 0 || showSidebar;
 
   // Landing screen: no setups loaded AND no sidebar to show
   if (!hasContent) {
@@ -668,12 +699,14 @@ function App() {
 
   return (
     <div className="flex h-screen bg-base text-text-primary">
-      <DropZone
-        hasFiles={true}
-        onFilesSelected={processFiles}
-        onBrowse={triggerFilePicker}
-        error={null}
-      />
+      {!isViewingShared && (
+        <DropZone
+          hasFiles={true}
+          onFilesSelected={processFiles}
+          onBrowse={triggerFilePicker}
+          error={null}
+        />
+      )}
 
       {/* Sidebar */}
       {showSidebar && (
@@ -695,13 +728,19 @@ function App() {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Toolbar */}
         <div className="sticky top-0 z-20 flex items-center justify-between border-border border-b bg-surface px-4 py-2">
-          <span className="select-none font-medium text-[10px] text-text-muted uppercase tracking-widest">
-            RBR Setup Compare
-          </span>
+          {isViewingShared ? (
+            <span className="select-none font-medium text-[10px] text-blue-400 uppercase tracking-widest">
+              Viewing shared comparison
+            </span>
+          ) : (
+            <span className="select-none font-medium text-[10px] text-text-muted uppercase tracking-widest">
+              RBR Setup Compare
+            </span>
+          )}
 
           <div className="flex items-center gap-4">
             <span className="text-text-secondary text-xs">
-              {setups.length} file{setups.length !== 1 ? "s" : ""}
+              {activeSetups.length} file{activeSetups.length !== 1 ? "s" : ""}
             </span>
             <label className="flex cursor-pointer items-center gap-1.5">
               <input
@@ -717,77 +756,81 @@ function App() {
           </div>
 
           <div className="flex items-center gap-3">
-            {rbr.isSupported && !showSidebar && (
+            {isViewingShared ? (
               <button
                 type="button"
-                onClick={handleOpenDirectory}
+                onClick={() => {
+                  setIsViewingShared(false);
+                  clearUrlHash();
+                }}
                 className="cursor-pointer text-text-muted text-xs uppercase tracking-wider hover:text-text-secondary"
               >
-                Open RBR folder
+                Dismiss
               </button>
+            ) : (
+              <>
+                {rbr.isSupported && !showSidebar && (
+                  <button
+                    type="button"
+                    onClick={handleOpenDirectory}
+                    className="cursor-pointer text-text-muted text-xs uppercase tracking-wider hover:text-text-secondary"
+                  >
+                    Open RBR folder
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={setups.length === 0}
+                  onClick={() => {
+                    const msg = getClearAllConfirmMessage((editor.editState?.edits.size ?? 0) > 0);
+                    if (!confirm(msg)) {
+                      return;
+                    }
+                    editor.discardEdit();
+                    setSetups([]);
+                    setLoadedPathsArr([]);
+                    setManualEntries([]);
+                    clearUrlHash();
+                  }}
+                  className={`text-xs uppercase tracking-wider ${
+                    setups.length === 0
+                      ? "cursor-not-allowed text-text-muted/40"
+                      : "cursor-pointer text-text-muted hover:text-text-secondary"
+                  }`}
+                >
+                  Clear all
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  disabled={setups.length === 0}
+                  title="Copy a shareable link to this comparison"
+                  className={`text-xs uppercase tracking-wider ${
+                    setups.length === 0
+                      ? "cursor-not-allowed text-text-muted/40"
+                      : shareStatus
+                        ? shareStatus.startsWith("Link")
+                          ? "cursor-pointer text-diff-positive"
+                          : "cursor-pointer text-diff-negative"
+                        : "cursor-pointer text-blue-400 hover:text-blue-300"
+                  }`}
+                >
+                  {shareStatus ?? "Copy share link"}
+                </button>
+                <button
+                  type="button"
+                  onClick={triggerFilePicker}
+                  className="cursor-pointer font-medium text-accent text-xs uppercase tracking-wider hover:text-text-primary"
+                >
+                  + Add files
+                </button>
+              </>
             )}
-            <button
-              type="button"
-              disabled={!urlData.current.found && setups.length === 0}
-              onClick={() => {
-                if (urlData.current.found) {
-                  editor.discardEdit();
-                  setSetups([]);
-                  clearUrlHash();
-                  urlData.current = { found: false };
-                  hasRestoredRef.current = true;
-                  hasRestoredManualRef.current = true;
-                  restoreFromLocalStorage();
-                  restoreManualSetups(manualEntries, setSetups);
-                } else {
-                  const msg = getClearAllConfirmMessage((editor.editState?.edits.size ?? 0) > 0);
-                  if (!confirm(msg)) {
-                    return;
-                  }
-                  editor.discardEdit();
-                  setSetups([]);
-                  setLoadedPathsArr([]);
-                  setManualEntries([]);
-                  clearUrlHash();
-                }
-              }}
-              className={`text-xs uppercase tracking-wider ${
-                !urlData.current.found && setups.length === 0
-                  ? "cursor-not-allowed text-text-muted/40"
-                  : "cursor-pointer text-text-muted hover:text-text-secondary"
-              }`}
-            >
-              {urlData.current.found ? "Dismiss shared" : "Clear all"}
-            </button>
-            <button
-              type="button"
-              onClick={handleShare}
-              disabled={setups.length === 0}
-              title="Copy a shareable link to this comparison"
-              className={`text-xs uppercase tracking-wider ${
-                setups.length === 0
-                  ? "cursor-not-allowed text-text-muted/40"
-                  : shareStatus
-                    ? shareStatus.startsWith("Link")
-                      ? "cursor-pointer text-diff-positive"
-                      : "cursor-pointer text-diff-negative"
-                    : "cursor-pointer text-blue-400 hover:text-blue-300"
-              }`}
-            >
-              {shareStatus ?? "Copy share link"}
-            </button>
-            <button
-              type="button"
-              onClick={triggerFilePicker}
-              className="cursor-pointer font-medium text-accent text-xs uppercase tracking-wider hover:text-text-primary"
-            >
-              + Add files
-            </button>
           </div>
         </div>
 
         {/* Error bar */}
-        {error && (
+        {error && !isViewingShared && (
           <div className="border-diff-negative/30 border-b bg-diff-negative/10 px-4 py-1.5 text-diff-negative text-xs">
             {error}
           </div>
@@ -800,12 +843,13 @@ function App() {
               <ComparisonTable
                 result={comparison}
                 setupNames={setupNames}
-                onRemoveSetup={handleRemoveSetup}
-                onSaveSetup={handleSaveSetup}
-                onReorderSetup={handleReorderSetup}
-                diffsOnly={diffsOnly && setups.length > 1}
-                editConfig={editConfig}
-                onStartEdit={handleStartEdit}
+                onRemoveSetup={isViewingShared ? undefined : handleRemoveSetup}
+                onSaveSetup={isViewingShared ? handleSaveSharedSetup : handleSaveSetup}
+                onReorderSetup={isViewingShared ? handleReorderSharedSetup : handleReorderSetup}
+                diffsOnly={diffsOnly && activeSetups.length > 1}
+                editConfig={isViewingShared ? undefined : editConfig}
+                onStartEdit={isViewingShared ? undefined : handleStartEdit}
+                editDisabledReason={isViewingShared ? "Save setup to edit it" : undefined}
               />
             ) : (
               <div className="flex h-full items-center justify-center">

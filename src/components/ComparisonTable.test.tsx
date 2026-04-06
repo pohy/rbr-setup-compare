@@ -375,3 +375,54 @@ describe("ComparisonTable single-setup edge case", () => {
     expect(editCol.textContent).toContain("20");
   });
 });
+
+describe("ComparisonTable editDisabledReason", () => {
+  const result: ComparisonResult = [
+    {
+      sectionName: "Engine",
+      rows: [{ type: "data", key: "Power", values: [100], isDifferent: false }],
+    },
+  ];
+
+  it("shows disabled Edit button with title when editDisabledReason is set", () => {
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        editDisabledReason="Save setup to edit it"
+      />,
+    );
+
+    // Open the popover for setup1
+    const header = screen.getAllByRole("columnheader")[0];
+    const menuButton = header.querySelector("button") as HTMLElement;
+    fireEvent.click(menuButton);
+
+    const editButton = screen.getByRole("button", { name: /edit/i });
+    expect(editButton).toBeDisabled();
+    expect(editButton.title).toBe("Save setup to edit it");
+  });
+
+  it("hides Edit button when neither onStartEdit nor editDisabledReason is set", () => {
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+      />,
+    );
+
+    const header = screen.getAllByRole("columnheader")[0];
+    const menuButton = header.querySelector("button") as HTMLElement;
+    fireEvent.click(menuButton);
+
+    expect(screen.queryByRole("button", { name: /edit/i })).toBeNull();
+  });
+});
