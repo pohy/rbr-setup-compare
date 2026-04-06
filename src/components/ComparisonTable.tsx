@@ -46,6 +46,8 @@ type Props = {
   editConfig?: EditConfig;
   onStartEdit?: (index: number) => void;
   editDisabledReason?: string;
+  savedSetupIndices?: ReadonlySet<number>;
+  onToggleSaveSetup?: (index: number) => void;
 };
 
 export function ComparisonTable({
@@ -58,6 +60,8 @@ export function ComparisonTable({
   editConfig,
   onStartEdit,
   editDisabledReason,
+  savedSetupIndices,
+  onToggleSaveSetup,
 }: Props) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [editingCell, setEditingCell] = useState<{ section: string; key: string } | null>(null);
@@ -200,7 +204,11 @@ export function ComparisonTable({
                 onDragEnd={clearDragState}
                 className={clsx(
                   "cursor-grab whitespace-nowrap border p-2",
-                  i === diffRefIndex ? "border-border border-t-2 border-t-accent" : "border-border",
+                  i === diffRefIndex
+                    ? "border-border border-t-2 border-t-accent"
+                    : savedSetupIndices?.has(i)
+                      ? "border-border border-t-2 border-t-diff-positive"
+                      : "border-border",
                   i === 0 && "sticky left-[var(--param-w)] z-20 bg-elevated",
                   dragIndex !== null && dragIndex !== i && "opacity-50",
                 )}
@@ -228,6 +236,21 @@ export function ComparisonTable({
                     </>
                   )}
                   <PopoverMenu.Item onClick={() => onSaveSetup(i)}>Download</PopoverMenu.Item>
+                  {onToggleSaveSetup && (
+                    <>
+                      <PopoverMenu.Divider />
+                      <PopoverMenu.Item
+                        onClick={() => onToggleSaveSetup(i)}
+                        title={
+                          savedSetupIndices?.has(i)
+                            ? "Remove this setup from your workspace"
+                            : "Keep this setup in your workspace after dismissing"
+                        }
+                      >
+                        {savedSetupIndices?.has(i) ? "Remove from my setups" : "Save to my setups"}
+                      </PopoverMenu.Item>
+                    </>
+                  )}
                   {onRemoveSetup && (
                     <>
                       <PopoverMenu.Divider />
