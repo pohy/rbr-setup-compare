@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
+import type { ManualSetupEntry } from "./manual-setup-store.ts";
 import type { EditState } from "./use-setup-editor.ts";
 
 type StorageMap = {
@@ -6,6 +7,7 @@ type StorageMap = {
   "rbr-setup-filter": string;
   "rbr-edit-state": EditState | null;
   "rbr-diffs-only": boolean;
+  "rbr-manual-setups": ManualSetupEntry[];
 };
 
 type StorageKey = keyof StorageMap;

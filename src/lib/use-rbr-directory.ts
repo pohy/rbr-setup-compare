@@ -35,6 +35,7 @@ export function inferSurface(fileName: string): string | null {
 
 export function useRbrDirectory() {
   const isSupported = isFileSystemAccessSupported();
+  const [isReady, setIsReady] = useState(!isSupported);
   const [hasStoredHandle, setHasStoredHandle] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [carGroups, setCarGroups] = useState<CarGroup[]>([]);
@@ -69,10 +70,12 @@ export function useRbrDirectory() {
     }
     loadDirectoryHandle().then(async (h) => {
       if (!h) {
+        setIsReady(true);
         return;
       }
       setHasStoredHandle(true);
       setHandle(h);
+      setIsReady(true);
       const granted = await checkPermission(h);
       if (granted) {
         console.log("[rbr-dir] Stored handle has permission, auto-scanning");
@@ -161,6 +164,7 @@ export function useRbrDirectory() {
 
   return {
     isSupported,
+    isReady,
     hasStoredHandle,
     isScanning,
     carGroups,

@@ -1,13 +1,15 @@
 import { useCallback, useState } from "react";
 import { type CarSetup, parseLspSetup } from "./lsp-parser.ts";
 
-export function useFilePicker(onFilesReady: (setups: CarSetup[]) => void) {
+export type ParsedFile = { setup: CarSetup; text: string };
+
+export function useFilePicker(onFilesReady: (files: ParsedFile[]) => void) {
   const [error, setError] = useState<string | null>(null);
 
   const processFiles = useCallback(
     async (files: FileList) => {
       setError(null);
-      const results: CarSetup[] = [];
+      const results: ParsedFile[] = [];
 
       for (const file of Array.from(files)) {
         if (!file.name.endsWith(".lsp")) {
@@ -16,7 +18,7 @@ export function useFilePicker(onFilesReady: (setups: CarSetup[]) => void) {
         try {
           const text = await file.text();
           const setup = parseLspSetup(text, file.name);
-          results.push(setup);
+          results.push({ setup, text });
         } catch (e) {
           setError(`Failed to parse ${file.name}: ${e instanceof Error ? e.message : String(e)}`);
           return;
