@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { ComparisonResult } from "../lib/compare.ts";
 import { ComparisonTable, type EditConfig } from "./ComparisonTable.tsx";
@@ -424,5 +424,93 @@ describe("ComparisonTable editDisabledReason", () => {
     fireEvent.click(menuButton);
 
     expect(screen.queryByRole("button", { name: /edit/i })).toBeNull();
+  });
+});
+
+describe("ComparisonTable save to my setups toggle", () => {
+  const result: ComparisonResult = [
+    {
+      sectionName: "Engine",
+      rows: [{ type: "data", key: "Power", values: [100, 200], isDifferent: true }],
+    },
+  ];
+
+  function openPopoverForSetup(index: number) {
+    const headers = screen.getAllByRole("columnheader");
+    const menuButton = headers[index].querySelector("button") as HTMLElement;
+    fireEvent.click(menuButton);
+  }
+
+  it("shows 'Save to my setups' when onToggleSaveSetup provided and setup not saved", () => {
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1", "setup2"]}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        savedSetupIndices={new Set()}
+        onToggleSaveSetup={noop}
+      />,
+    );
+
+    openPopoverForSetup(0);
+
+    expect(screen.getByRole("button", { name: /save to my setups/i })).toBeInTheDocument();
+  });
+
+  it("shows 'Remove from my setups' when setup is saved", () => {
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1", "setup2"]}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        savedSetupIndices={new Set([0])}
+        onToggleSaveSetup={noop}
+      />,
+    );
+
+    openPopoverForSetup(0);
+
+    expect(screen.getByRole("button", { name: /remove from my setups/i })).toBeInTheDocument();
+  });
+
+  it("calls onToggleSaveSetup with correct index", () => {
+    const onToggle = vi.fn();
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1", "setup2"]}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        savedSetupIndices={new Set()}
+        onToggleSaveSetup={onToggle}
+      />,
+    );
+
+    openPopoverForSetup(1);
+    fireEvent.click(screen.getByRole("button", { name: /save to my setups/i }));
+
+    expect(onToggle).toHaveBeenCalledWith(1);
+  });
+
+  it("does not show save button when onToggleSaveSetup is not provided", () => {
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1", "setup2"]}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+      />,
+    );
+
+    openPopoverForSetup(0);
+
+    expect(screen.queryByRole("button", { name: /save to my setups/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /remove from my setups/i })).toBeNull();
   });
 });

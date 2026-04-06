@@ -590,6 +590,40 @@ function App() {
   }, [setups, diffsOnly]);
 
   // --- Shared view handlers ---
+  // Track which shared setups have been saved to workspace (shared index → manualId)
+  const [savedSharedMap, setSavedSharedMap] = useState<Map<number, string>>(new Map());
+  const savedSharedIndices = useMemo(() => new Set(savedSharedMap.keys()), [savedSharedMap]);
+
+  const handleToggleSaveSharedSetup = useCallback(
+    (index: number) => {
+      const existingId = savedSharedMap.get(index);
+      if (existingId) {
+        // Unsave: remove from manual entries and workspace
+        setSavedSharedMap((prev) => {
+          const next = new Map(prev);
+          next.delete(index);
+          return next;
+        });
+        setManualEntries((entries) => removeEntry(entries, existingId));
+        setSetups((prev) =>
+          prev.filter((s) => (s as CarSetup & { manualId?: string }).manualId !== existingId),
+        );
+      } else {
+        // Save: create manual entry and add to workspace
+        const setup = sharedSetups[index];
+        if (!setup) {
+          return;
+        }
+        const text = setupToLsp(setup);
+        const entry = createManualEntry(setup.name, text);
+        setSavedSharedMap((prev) => new Map(prev).set(index, entry.id));
+        setManualEntries((prev) => [...prev, entry]);
+        setSetups((prev) => [...prev, { ...setup, manualId: entry.id }]);
+      }
+    },
+    [savedSharedMap, sharedSetups, setManualEntries],
+  );
+
   const handleSaveSharedSetup = useCallback(
     (index: number) => {
       const setup = sharedSetups[index];
@@ -638,6 +672,17 @@ function App() {
   const comparison = setupsForComparison.length >= 1 ? compareSetups(setupsForComparison) : null;
 
   const setupNames = setupsForComparison.map((s) => s.name.split("/").pop() ?? s.name);
+
+  // Indices of manual (floating) setups in workspace — for visual indicator
+  const manualSetupIndices = useMemo(() => {
+    const indices = new Set<number>();
+    for (let i = 0; i < setups.length; i++) {
+      if ((setups[i] as CarSetup & { manualId?: string }).manualId) {
+        indices.add(i);
+      }
+    }
+    return indices;
+  }, [setups]);
 
   // Build editConfig for ComparisonTable
   const handleDiscardEdit = useCallback(() => {
@@ -765,7 +810,9 @@ function App() {
                 }}
                 className="cursor-pointer text-text-muted text-xs uppercase tracking-wider hover:text-text-secondary"
               >
-                Dismiss
+                {savedSharedMap.size > 0
+                  ? `Dismiss (${savedSharedMap.size} will be saved)`
+                  : "Dismiss"}
               </button>
             ) : (
               <>
@@ -850,6 +897,14 @@ function App() {
                 editConfig={isViewingShared ? undefined : editConfig}
                 onStartEdit={isViewingShared ? undefined : handleStartEdit}
                 editDisabledReason={isViewingShared ? "Save setup to edit it" : undefined}
+                savedSetupIndices={
+                  isViewingShared
+                    ? savedSharedIndices
+                    : manualSetupIndices.size > 0
+                      ? manualSetupIndices
+                      : undefined
+                }
+                onToggleSaveSetup={isViewingShared ? handleToggleSaveSharedSetup : undefined}
               />
             ) : (
               <div className="flex h-full items-center justify-center">
