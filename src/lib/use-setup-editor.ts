@@ -53,6 +53,22 @@ export function deriveEditedSetup(
   return clone;
 }
 
+/**
+ * Compare a new edit value against source. For numbers, round both to
+ * a safe precision (10 decimal places) to absorb floating-point drift
+ * from repeated stepping (e.g. 0.22 + 0.01 - 0.01 ≠ 0.22 in IEEE 754).
+ */
+function valuesEqual(a: number | string, b: number | string): boolean {
+  if (typeof a !== typeof b) {
+    return false;
+  }
+  if (typeof a === "string") {
+    return a === b;
+  }
+  const PRECISION = 1e10;
+  return Math.round((a as number) * PRECISION) === Math.round((b as number) * PRECISION);
+}
+
 export function clampToRange(value: number, range: RangeTriplet): number {
   const clamped = Math.min(Math.max(value, range.min), range.max);
   if (range.step === 0) {
@@ -70,6 +86,32 @@ export function stepValue(
   const delta = fine ? range.step / 10 : range.step;
   const fineRange = fine ? { ...range, step: delta } : range;
   return clampToRange(current + direction * delta, fineRange);
+}
+
+function applyEdit(
+  edits: Map<string, Map<string, number | string>>,
+  section: string,
+  key: string,
+  value: number | string,
+  isNoOp: boolean,
+): Map<string, Map<string, number | string>> {
+  const newEdits = new Map(edits);
+
+  if (isNoOp) {
+    const sectionEdits = newEdits.get(section);
+    if (!sectionEdits?.has(key)) {
+      return newEdits;
+    }
+    const newSectionEdits = new Map(sectionEdits);
+    newSectionEdits.delete(key);
+    newSectionEdits.size === 0 ? newEdits.delete(section) : newEdits.set(section, newSectionEdits);
+    return newEdits;
+  }
+
+  const sectionEdits = new Map(newEdits.get(section) ?? []);
+  sectionEdits.set(key, value);
+  newEdits.set(section, sectionEdits);
+  return newEdits;
 }
 
 export function useSetupEditor() {
@@ -97,10 +139,9 @@ export function useSetupEditor() {
         if (!prev) {
           return prev;
         }
-        const newEdits = new Map(prev.edits);
-        const sectionEdits = new Map(newEdits.get(section) ?? []);
-        sectionEdits.set(key, rawValue);
-        newEdits.set(section, sectionEdits);
+        const source = prev.sourceSetup.sections[section]?.values[key];
+        const isNoOp = source !== undefined && valuesEqual(rawValue, source);
+        const newEdits = applyEdit(prev.edits, section, key, rawValue, isNoOp);
         return { ...prev, edits: newEdits };
       });
     },
@@ -122,10 +163,8 @@ export function useSetupEditor() {
         }
 
         const newValue = fn(current);
-        const newEdits = new Map(prev.edits);
-        const sectionEdits = new Map(newEdits.get(section) ?? []);
-        sectionEdits.set(key, newValue);
-        newEdits.set(section, sectionEdits);
+        const isNoOp = valuesEqual(newValue, Number(source));
+        const newEdits = applyEdit(prev.edits, section, key, newValue, isNoOp);
         return { ...prev, edits: newEdits };
       });
     },
