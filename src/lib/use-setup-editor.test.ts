@@ -399,6 +399,124 @@ describe("useSetupEditor.relocateSource", () => {
   });
 });
 
+describe("auto-cleanup: updateValue removes no-op edits", () => {
+  const setup: CarSetup = {
+    name: "test.lsp",
+    sections: {
+      SpringDamperLF: {
+        id: ":-D",
+        values: { SpringStiffness: 50000, SpringLength: 0.22 },
+        rawValues: { SpringStiffness: "50000", SpringLength: "0.22" },
+      },
+    },
+  };
+
+  it("does not create an edit entry when value equals source", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    act(() => result.current.updateValue("SpringDamperLF", "SpringStiffness", 50000));
+
+    expect(result.current.editState?.edits.size).toBe(0);
+  });
+
+  it("removes an existing edit when value is set back to source", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    act(() => result.current.updateValue("SpringDamperLF", "SpringStiffness", 55000));
+    expect(result.current.editState?.edits.get("SpringDamperLF")?.has("SpringStiffness")).toBe(
+      true,
+    );
+
+    act(() => result.current.updateValue("SpringDamperLF", "SpringStiffness", 50000));
+    expect(
+      result.current.editState?.edits.get("SpringDamperLF")?.has("SpringStiffness"),
+    ).toBeFalsy();
+  });
+
+  it("cleans up empty section map after last key removed", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    act(() => result.current.updateValue("SpringDamperLF", "SpringStiffness", 55000));
+    act(() => result.current.updateValue("SpringDamperLF", "SpringStiffness", 50000));
+
+    expect(result.current.editState?.edits.has("SpringDamperLF")).toBe(false);
+  });
+
+  it("keeps other keys when only one reverts to source", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    act(() => result.current.updateValue("SpringDamperLF", "SpringStiffness", 55000));
+    act(() => result.current.updateValue("SpringDamperLF", "SpringLength", 0.3));
+    // Revert only SpringStiffness
+    act(() => result.current.updateValue("SpringDamperLF", "SpringStiffness", 50000));
+
+    expect(
+      result.current.editState?.edits.get("SpringDamperLF")?.has("SpringStiffness"),
+    ).toBeFalsy();
+    expect(result.current.editState?.edits.get("SpringDamperLF")?.get("SpringLength")).toBe(0.3);
+  });
+
+  it("handles string values: no edit when same as source", () => {
+    const strSetup: CarSetup = {
+      name: "test.lsp",
+      sections: {
+        Car: { id: "Car", values: { SomeSetting: "abc" } },
+      },
+    };
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(strSetup));
+    act(() => result.current.updateValue("Car", "SomeSetting", "abc"));
+
+    expect(result.current.editState?.edits.size).toBe(0);
+  });
+});
+
+describe("auto-cleanup: updateValueWith removes no-op edits", () => {
+  const setup: CarSetup = {
+    name: "test.lsp",
+    sections: {
+      SpringDamperLF: {
+        id: ":-D",
+        values: { SpringStiffness: 50000, SpringLength: 0.22 },
+        rawValues: { SpringStiffness: "50000", SpringLength: "0.22" },
+      },
+    },
+  };
+
+  it("removes edit when stepping back to source value", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    // Step up then step back down
+    act(() => result.current.updateValueWith("SpringDamperLF", "SpringStiffness", (v) => v + 100));
+    act(() => result.current.updateValueWith("SpringDamperLF", "SpringStiffness", (v) => v - 100));
+
+    expect(
+      result.current.editState?.edits.get("SpringDamperLF")?.has("SpringStiffness"),
+    ).toBeFalsy();
+  });
+
+  it("removes edit when float stepping lands back on source (precision)", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    // SpringLength source = 0.22, step by 0.01 up then back
+    act(() => result.current.updateValueWith("SpringDamperLF", "SpringLength", (v) => v + 0.01));
+    act(() => result.current.updateValueWith("SpringDamperLF", "SpringLength", (v) => v - 0.01));
+
+    // Without float-safe comparison this would fail: 0.22 + 0.01 - 0.01 = 0.21999999999999997
+    expect(result.current.editState?.edits.get("SpringDamperLF")?.has("SpringLength")).toBeFalsy();
+  });
+
+  it("cleans up empty section map after stepping back", () => {
+    const { result } = renderHook(() => useSetupEditor());
+    act(() => result.current.startEdit(setup));
+    act(() => result.current.updateValueWith("SpringDamperLF", "SpringStiffness", (v) => v + 100));
+    act(() => result.current.updateValueWith("SpringDamperLF", "SpringStiffness", (v) => v - 100));
+
+    expect(result.current.editState?.edits.has("SpringDamperLF")).toBe(false);
+    expect(result.current.editState?.edits.size).toBe(0);
+  });
+});
+
 describe("bakeEdits", () => {
   const setup = makeSetup();
 
