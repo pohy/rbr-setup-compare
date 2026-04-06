@@ -13,13 +13,14 @@ import { loadExampleSetups } from "./lib/example-setups.ts";
 import { writeFileHandle } from "./lib/fs-access.ts";
 import type { CarSetup } from "./lib/lsp-parser.ts";
 import { setupToLsp } from "./lib/lsp-writer.ts";
+import { createManualEntry, removeEntry, restoreManualSetups } from "./lib/manual-setup-store.ts";
 import { getRangeForKey, type RangeMap } from "./lib/range-mapping.ts";
 import type { CarGroup, ScannedSetup } from "./lib/rbr-scanner.ts";
 import { SECTION_RENAMES, unsanitizeValue } from "./lib/sanitize.ts";
 import { isOverwritable, savedGamesCarDir } from "./lib/setup-permissions.ts";
 import { buildShareUrl, clearUrlHash, hydrateFromUrl } from "./lib/url-sharing.ts";
 import { useDirectoryWatcher } from "./lib/use-directory-watcher.ts";
-import { useFilePicker } from "./lib/use-file-picker.ts";
+import { type ParsedFile, useFilePicker } from "./lib/use-file-picker.ts";
 import { usePersistentState } from "./lib/use-persistent-state.ts";
 import { inferSurface, useRbrDirectory } from "./lib/use-rbr-directory.ts";
 import { stepValue, useSetupEditor } from "./lib/use-setup-editor.ts";
@@ -47,10 +48,18 @@ function App() {
   const loadedPaths = useMemo(() => new Set(loadedPathsArr), [loadedPathsArr]);
   const [loadingPaths, setLoadingPaths] = useState<Set<string>>(new Set());
   const hasRestoredRef = useRef(false);
+  const hasRestoredManualRef = useRef(false);
+  const [manualEntries, setManualEntries] = usePersistentState("rbr-manual-setups", []);
 
-  const handleFilesReady = useCallback((newSetups: CarSetup[]) => {
-    setSetups((prev) => [...prev, ...newSetups]);
-  }, []);
+  const handleFilesReady = useCallback(
+    (files: ParsedFile[]) => {
+      const entries = files.map((f) => createManualEntry(f.setup.name, f.text));
+      setManualEntries((prev) => [...prev, ...entries]);
+      const newSetups = files.map((f, i) => ({ ...f.setup, manualId: entries[i].id }));
+      setSetups((prev) => [...prev, ...newSetups]);
+    },
+    [setManualEntries],
+  );
 
   const { processFiles, triggerFilePicker, error } = useFilePicker(handleFilesReady);
 
@@ -67,13 +76,23 @@ function App() {
   }, []);
 
   const handleOpenDirectory = useCallback(async () => {
+    if (manualEntries.length > 0) {
+      const ok = window.confirm(
+        `You have ${manualEntries.length} manually loaded setup${manualEntries.length > 1 ? "s" : ""}. Connecting a directory will replace them. Continue?`,
+      );
+      if (!ok) {
+        return;
+      }
+      setManualEntries([]);
+      setSetups((prev) => prev.filter((s) => !(s as CarSetup & { manualId?: string }).manualId));
+    }
     if (rbr.hasStoredHandle) {
       await rbr.reopenDirectory();
     } else {
       await rbr.pickDirectory();
     }
     setSidebarDismissed(false);
-  }, [rbr]);
+  }, [rbr, manualEntries.length, setManualEntries]);
 
   const handleToggleSetup = useCallback(
     async (setup: ScannedSetup, isLoaded: boolean) => {
@@ -176,8 +195,24 @@ function App() {
       return;
     }
     hasRestoredRef.current = true;
+    hasRestoredManualRef.current = true; // FS path takes precedence
     restoreFromLocalStorage();
   }, [rbr.carGroups.length, restoreFromLocalStorage]);
+
+  // Restore manually loaded setups when no FS API directory is available
+  useEffect(() => {
+    if (urlData.current.found) {
+      return;
+    }
+    if (hasRestoredManualRef.current || !rbr.isReady) {
+      return;
+    }
+    if (rbr.hasStoredHandle) {
+      return; // FS path will handle restoration
+    }
+    hasRestoredManualRef.current = true;
+    restoreManualSetups(manualEntries, setSetups);
+  }, [rbr.isReady, rbr.hasStoredHandle, manualEntries]);
 
   // --- Directory watcher: auto-detect external file changes ---
   const handleDirectoryChanges = useCallback(
@@ -245,15 +280,19 @@ function App() {
   const handleRemoveSetup = useCallback(
     (index: number) => {
       setSetups((prev) => {
-        const removed = prev[index];
+        const removed = prev[index] as CarSetup & { manualId?: string };
         if (removed) {
           fileHandles.current.delete(removed.name);
           setLoadedPathsArr((lp) => lp.filter((p) => p !== removed.name));
+          const { manualId } = removed;
+          if (manualId) {
+            setManualEntries((entries) => removeEntry(entries, manualId));
+          }
         }
         return prev.filter((_, i) => i !== index);
       });
     },
-    [setLoadedPathsArr],
+    [setLoadedPathsArr, setManualEntries],
   );
 
   const handleReorderSetup = useCallback(
@@ -697,7 +736,9 @@ function App() {
                   clearUrlHash();
                   urlData.current = { found: false };
                   hasRestoredRef.current = true;
+                  hasRestoredManualRef.current = true;
                   restoreFromLocalStorage();
+                  restoreManualSetups(manualEntries, setSetups);
                 } else {
                   const msg = getClearAllConfirmMessage((editor.editState?.edits.size ?? 0) > 0);
                   if (!confirm(msg)) {
@@ -706,6 +747,7 @@ function App() {
                   editor.discardEdit();
                   setSetups([]);
                   setLoadedPathsArr([]);
+                  setManualEntries([]);
                   clearUrlHash();
                 }
               }}
