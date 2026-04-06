@@ -39,12 +39,13 @@ export type EditConfig = {
 type Props = {
   result: ComparisonResult;
   setupNames: readonly string[];
-  onRemoveSetup: (index: number) => void;
+  onRemoveSetup?: (index: number) => void;
   onSaveSetup: (index: number) => void;
   onReorderSetup: (from: number, to: number) => void;
   diffsOnly: boolean;
   editConfig?: EditConfig;
   onStartEdit?: (index: number) => void;
+  editDisabledReason?: string;
 };
 
 export function ComparisonTable({
@@ -56,6 +57,7 @@ export function ComparisonTable({
   diffsOnly,
   editConfig,
   onStartEdit,
+  editDisabledReason,
 }: Props) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [editingCell, setEditingCell] = useState<{ section: string; key: string } | null>(null);
@@ -212,19 +214,28 @@ export function ComparisonTable({
                   className="flex items-center justify-between gap-2"
                   disabled={dragIndex !== null}
                 >
-                  {onStartEdit && (
+                  {(onStartEdit || editDisabledReason) && (
                     <>
-                      <PopoverMenu.Item onClick={() => onStartEdit(i)} variant="accent">
+                      <PopoverMenu.Item
+                        onClick={onStartEdit ? () => onStartEdit(i) : undefined}
+                        variant="accent"
+                        disabled={!onStartEdit}
+                        title={!onStartEdit ? editDisabledReason : undefined}
+                      >
                         Edit
                       </PopoverMenu.Item>
                       <PopoverMenu.Divider />
                     </>
                   )}
                   <PopoverMenu.Item onClick={() => onSaveSetup(i)}>Download</PopoverMenu.Item>
-                  <PopoverMenu.Divider />
-                  <PopoverMenu.Item onClick={() => onRemoveSetup(i)} variant="danger">
-                    Remove
-                  </PopoverMenu.Item>
+                  {onRemoveSetup && (
+                    <>
+                      <PopoverMenu.Divider />
+                      <PopoverMenu.Item onClick={() => onRemoveSetup(i)} variant="danger">
+                        Remove
+                      </PopoverMenu.Item>
+                    </>
+                  )}
                 </PopoverMenu>
               </div>
             );
