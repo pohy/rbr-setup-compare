@@ -5,17 +5,17 @@ export function getClearAllConfirmMessage(hasEdits: boolean): string {
     : "Remove all loaded setups?";
 }
 
-/** Returns confirm message if needed when unchecking a setup, or null if no confirm needed. */
-export function getUncheckConfirmMessage(
+/** Returns confirm message when removing a setup that is being edited with pending edits, or null. */
+export function getRemoveConfirmMessage(
   editSourceName: string | undefined,
   hasEdits: boolean,
-  uncheckPath: string,
+  removePath: string,
 ): string | null {
-  if (!editSourceName || editSourceName !== uncheckPath || !hasEdits) {
+  if (!editSourceName || editSourceName !== removePath || !hasEdits) {
     return null;
   }
-  const fileName = uncheckPath.split("/").pop() ?? uncheckPath;
-  return `Unchecking "${fileName}" will discard your unsaved edits.`;
+  const fileName = removePath.split("/").pop() ?? removePath;
+  return `Remove "${fileName}" and discard unsaved edits?`;
 }
 
 type PromptDeps = {

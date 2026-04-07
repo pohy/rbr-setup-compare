@@ -6,7 +6,7 @@ import { SetupBrowser } from "./components/SetupBrowser.tsx";
 import { compareSetups } from "./lib/compare.ts";
 import {
   getClearAllConfirmMessage,
-  getUncheckConfirmMessage,
+  getRemoveConfirmMessage,
   promptSaveAs,
 } from "./lib/confirm-messages.ts";
 import { loadExampleSetups } from "./lib/example-setups.ts";
@@ -101,27 +101,37 @@ function App() {
     setSidebarDismissed(false);
   }, [rbr, manualEntries.length, setManualEntries]);
 
+  /** Confirm (if needed) and remove a setup by name. Returns false if user cancelled. */
+  const confirmAndRemoveSetup = useCallback(
+    (setupName: string, opts?: { manualId?: string }): boolean => {
+      const confirmMsg = getRemoveConfirmMessage(
+        editor.editState?.sourceName,
+        (editor.editState?.edits.size ?? 0) > 0,
+        setupName,
+      );
+      if (confirmMsg && !window.confirm(confirmMsg)) {
+        return false;
+      }
+      if (editor.editState?.sourceName === setupName) {
+        editor.discardEdit();
+      }
+      setSetups((prev) => prev.filter((s) => s.name !== setupName));
+      fileHandles.current.delete(setupName);
+      setLoadedPathsArr((prev) => prev.filter((p) => p !== setupName));
+      const { manualId } = opts ?? {};
+      if (manualId) {
+        setManualEntries((entries) => removeEntry(entries, manualId));
+      }
+      return true;
+    },
+    [editor, setLoadedPathsArr, setManualEntries],
+  );
+
   const handleToggleSetup = useCallback(
     async (setup: ScannedSetup, isLoaded: boolean) => {
       const path = setup.relativePath;
       if (isLoaded) {
-        // Check if unchecking the currently-edited setup with pending edits
-        const confirmMsg = getUncheckConfirmMessage(
-          editor.editState?.sourceName,
-          (editor.editState?.edits.size ?? 0) > 0,
-          path,
-        );
-        if (confirmMsg && !window.confirm(confirmMsg)) {
-          return;
-        }
-        // Discard edit if unchecking the edited setup (even without pending edits)
-        if (editor.editState?.sourceName === path) {
-          editor.discardEdit();
-        }
-        // Remove
-        setSetups((prev) => prev.filter((s) => s.name !== path));
-        fileHandles.current.delete(path);
-        setLoadedPathsArr((prev) => prev.filter((p) => p !== path));
+        confirmAndRemoveSetup(path);
       } else {
         // Load
         setLoadingPaths((prev) => new Set(prev).add(path));
@@ -139,7 +149,7 @@ function App() {
         }
       }
     },
-    [rbr, setLoadedPathsArr, editor],
+    [rbr, confirmAndRemoveSetup, setLoadedPathsArr],
   );
 
   const handleDisconnect = useCallback(async () => {
@@ -280,20 +290,12 @@ function App() {
 
   const handleRemoveSetup = useCallback(
     (index: number) => {
-      setSetups((prev) => {
-        const removed = prev[index] as CarSetup & { manualId?: string };
-        if (removed) {
-          fileHandles.current.delete(removed.name);
-          setLoadedPathsArr((lp) => lp.filter((p) => p !== removed.name));
-          const { manualId } = removed;
-          if (manualId) {
-            setManualEntries((entries) => removeEntry(entries, manualId));
-          }
-        }
-        return prev.filter((_, i) => i !== index);
-      });
+      const setup = setups[index] as (CarSetup & { manualId?: string }) | undefined;
+      if (setup) {
+        confirmAndRemoveSetup(setup.name, { manualId: setup.manualId });
+      }
     },
-    [setLoadedPathsArr, setManualEntries],
+    [setups, confirmAndRemoveSetup],
   );
 
   const handleReorderSetup = useCallback(
@@ -700,6 +702,7 @@ function App() {
     const diffRefIndex = effectiveDiffMode === "vs-original" ? sourceIndex : 0;
     return {
       columnIndex: setups.length, // always last column
+      sourceIndex,
       diffRefIndex,
       canToggleDiffMode,
       edits: editor.editState.edits,

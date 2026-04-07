@@ -49,10 +49,10 @@ export function EditColumnHeader({
             }}
             variant="accent"
           >
-            Save by overwriting
+            Save by overwriting...
           </PopoverMenu.Item>
           <PopoverMenu.Item onClick={onRenameAndSave} variant="accent">
-            Rename and save
+            Rename and save...
           </PopoverMenu.Item>
         </>
       )}
@@ -62,7 +62,7 @@ export function EditColumnHeader({
         </PopoverMenu.Item>
       )}
       <PopoverMenu.Item onClick={onSave} variant="accent">
-        Download
+        Download...
       </PopoverMenu.Item>
       <PopoverMenu.Divider />
       <PopoverMenu.Item
@@ -87,7 +87,7 @@ export function EditColumnHeader({
           }}
           variant="danger"
         >
-          Discard edits
+          Close editor and discard edits...
         </PopoverMenu.Item>
       ) : (
         <PopoverMenu.Item onClick={onDiscard}>Close editor</PopoverMenu.Item>
