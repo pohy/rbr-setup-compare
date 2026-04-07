@@ -18,6 +18,7 @@ for (const [raw, display] of Object.entries(SECTION_RENAMES)) {
 
 export type EditConfig = {
   columnIndex: number;
+  sourceIndex: number;
   diffRefIndex: number;
   canToggleDiffMode: boolean;
   edits: Map<string, Map<string, number | string>>;
@@ -173,6 +174,14 @@ export function ComparisonTable({
               );
             }
 
+            let removeLabel = "Remove";
+            if (editConfig?.sourceIndex === i) {
+              removeLabel =
+                (editConfig.edits.size ?? 0) > 0
+                  ? "Remove and discard edits..."
+                  : "Remove and close editor";
+            }
+
             return (
               <div
                 key={i}
@@ -237,7 +246,7 @@ export function ComparisonTable({
                       <PopoverMenu.Divider />
                     </>
                   )}
-                  <PopoverMenu.Item onClick={() => onSaveSetup(i)}>Download</PopoverMenu.Item>
+                  <PopoverMenu.Item onClick={() => onSaveSetup(i)}>Download...</PopoverMenu.Item>
                   {onToggleSaveSetup && (
                     <>
                       <PopoverMenu.Divider />
@@ -257,7 +266,7 @@ export function ComparisonTable({
                     <>
                       <PopoverMenu.Divider />
                       <PopoverMenu.Item onClick={() => onRemoveSetup(i)} variant="danger">
-                        Remove
+                        {removeLabel}
                       </PopoverMenu.Item>
                     </>
                   )}

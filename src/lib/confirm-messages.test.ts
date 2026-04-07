@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   getClearAllConfirmMessage,
-  getUncheckConfirmMessage,
+  getRemoveConfirmMessage,
   promptSaveAs,
 } from "./confirm-messages.ts";
 
@@ -17,22 +17,22 @@ describe("getClearAllConfirmMessage", () => {
   });
 });
 
-describe("getUncheckConfirmMessage", () => {
-  it("returns null when unchecked setup is not the edited one", () => {
-    expect(getUncheckConfirmMessage("car1/setup.lsp", true, "car2/other.lsp")).toBeNull();
+describe("getRemoveConfirmMessage", () => {
+  it("returns null when removed setup is not the edited one", () => {
+    expect(getRemoveConfirmMessage("car1/setup.lsp", true, "car2/other.lsp")).toBeNull();
   });
 
   it("returns null when there is no edit state", () => {
-    expect(getUncheckConfirmMessage(undefined, false, "car1/setup.lsp")).toBeNull();
+    expect(getRemoveConfirmMessage(undefined, false, "car1/setup.lsp")).toBeNull();
   });
 
   it("returns null when edit state has no pending edits", () => {
-    expect(getUncheckConfirmMessage("car1/setup.lsp", false, "car1/setup.lsp")).toBeNull();
+    expect(getRemoveConfirmMessage("car1/setup.lsp", false, "car1/setup.lsp")).toBeNull();
   });
 
-  it("returns message mentioning the setup name when unchecking edited setup with edits", () => {
-    const msg = getUncheckConfirmMessage("car1/setup.lsp", true, "car1/setup.lsp");
-    expect(msg).toBe('Unchecking "setup.lsp" will discard your unsaved edits.');
+  it("returns discard-edits message when removing edited setup with edits", () => {
+    const msg = getRemoveConfirmMessage("car1/setup.lsp", true, "car1/setup.lsp");
+    expect(msg).toBe('Remove "setup.lsp" and discard unsaved edits?');
   });
 });
 

@@ -20,6 +20,7 @@ const noop = () => {};
 function makeEditConfig(overrides: Partial<EditConfig> = {}): EditConfig {
   return {
     columnIndex: 2,
+    sourceIndex: -1,
     diffRefIndex: 0,
     canToggleDiffMode: false,
     edits: new Map(),
@@ -553,5 +554,92 @@ describe("ComparisonTable LSP labels toggle", () => {
 
     expect(screen.getByText("DampingBump")).toBeInTheDocument();
     expect(screen.getByText("SpringDamperFront")).toBeInTheDocument();
+  });
+});
+
+describe("ComparisonTable remove button label", () => {
+  const result: ComparisonResult = [
+    {
+      sectionName: "Engine",
+      rows: [{ type: "data", key: "Power", values: [100, 200], isDifferent: true }],
+    },
+  ];
+
+  function openPopoverForSetup(index: number) {
+    const headers = screen.getAllByRole("columnheader");
+    const menuButton = headers[index].querySelector("button") as HTMLElement;
+    fireEvent.click(menuButton);
+  }
+
+  it('shows "Remove" when editor is not open', () => {
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1", "setup2"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+      />,
+    );
+
+    openPopoverForSetup(0);
+
+    expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
+  });
+
+  it('shows "Remove" for a column that is not being edited', () => {
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1", "setup2"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        editConfig={makeEditConfig({ columnIndex: 1 })}
+      />,
+    );
+
+    openPopoverForSetup(0);
+
+    expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
+  });
+
+  it('shows "Remove and close editor" on source column with no pending edits', () => {
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1", "setup2"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        editConfig={makeEditConfig({ columnIndex: 2, sourceIndex: 0, edits: new Map() })}
+      />,
+    );
+
+    openPopoverForSetup(0);
+
+    expect(screen.getByRole("button", { name: "Remove and close editor" })).toBeInTheDocument();
+  });
+
+  it('shows "Remove and discard edits..." on source column with pending edits', () => {
+    const edits = new Map([["Engine", new Map([["Power", 999]])]]);
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1", "setup2"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        editConfig={makeEditConfig({ columnIndex: 2, sourceIndex: 0, edits })}
+      />,
+    );
+
+    openPopoverForSetup(0);
+
+    expect(screen.getByRole("button", { name: "Remove and discard edits..." })).toBeInTheDocument();
   });
 });
