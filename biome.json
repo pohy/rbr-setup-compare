@@ -15,6 +15,10 @@
     },
     "rules": {
       "recommended": true,
+      "correctness": {
+        "useHookAtTopLevel": "off",
+        "useExhaustiveDependencies": "off"
+      },
       "style": {
         "noNonNullAssertion": "error",
         "useCollapsedElseIf": "error",
