@@ -514,3 +514,44 @@ describe("ComparisonTable save to my setups toggle", () => {
     expect(screen.queryByRole("button", { name: /remove from my setups/i })).toBeNull();
   });
 });
+
+describe("ComparisonTable LSP labels toggle", () => {
+  const result: ComparisonResult = [
+    {
+      sectionName: "SpringDamperFront",
+      rows: [{ type: "data", key: "DampingBump", values: [100, 200], isDifferent: true }],
+    },
+  ];
+
+  it("shows in-game labels by default (showLspLabels=false)", () => {
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1", "setup2"]}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        showLspLabels={false}
+      />,
+    );
+
+    expect(screen.getByText("Bump")).toBeInTheDocument();
+    expect(screen.getByText("Springs & Dampers (Front)")).toBeInTheDocument();
+  });
+
+  it("shows LSP keys when showLspLabels=true", () => {
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1", "setup2"]}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        showLspLabels={true}
+      />,
+    );
+
+    expect(screen.getByText("DampingBump")).toBeInTheDocument();
+    expect(screen.getByText("SpringDamperFront")).toBeInTheDocument();
+  });
+});

@@ -43,6 +43,7 @@ type Props = {
   onSaveSetup: (index: number) => void;
   onReorderSetup: (from: number, to: number) => void;
   diffsOnly: boolean;
+  showLspLabels?: boolean;
   editConfig?: EditConfig;
   onStartEdit?: (index: number) => void;
   editDisabledReason?: string;
@@ -57,6 +58,7 @@ export function ComparisonTable({
   onSaveSetup,
   onReorderSetup,
   diffsOnly,
+  showLspLabels = false,
   editConfig,
   onStartEdit,
   editDisabledReason,
@@ -297,6 +299,7 @@ export function ComparisonTable({
               onToggle={() => toggleSection(section.sectionName)}
               dragIndex={dragIndex}
               editConfig={editConfig}
+              showLspLabels={showLspLabels}
               onCellEditingChange={(s, key, editing) =>
                 setEditingCell(editing ? { section: s, key } : null)
               }
@@ -316,6 +319,7 @@ function Section({
   onToggle,
   dragIndex,
   editConfig,
+  showLspLabels,
   onCellEditingChange,
 }: {
   section: ComparisonResult[number];
@@ -325,6 +329,7 @@ function Section({
   onToggle: () => void;
   dragIndex: number | null;
   editConfig?: EditConfig;
+  showLspLabels: boolean;
   onCellEditingChange?: (section: string, key: string, editing: boolean) => void;
 }) {
   const diffCount = section.rows.filter((r) => r.type === "data" && r.isDifferent).length;
@@ -348,7 +353,9 @@ function Section({
           <span className="mr-2 inline-block w-4 text-center text-accent">
             {isCollapsed ? "+" : "\u2212"}
           </span>
-          <span title={section.sectionName}>{getSectionLabel(section.sectionName)}</span>
+          <span title={showLspLabels ? getSectionLabel(section.sectionName) : section.sectionName}>
+            {showLspLabels ? section.sectionName : getSectionLabel(section.sectionName)}
+          </span>
           {diffCount > 0 && (
             <span className="ml-2 text-accent-dim">
               {diffCount} diff{diffCount > 1 ? "s" : ""}
@@ -372,12 +379,12 @@ function Section({
               style={{ gridColumn: `span ${dataColCount}` }}
             >
               <div
-                title={row.key}
+                title={showLspLabels ? getLabel(row.key) : row.key}
                 className={clsx(
                   "sticky left-0 z-[2] whitespace-nowrap border border-border bg-base p-2 text-text-secondary group-hover:bg-elevated",
                 )}
               >
-                {getLabel(row.key)}
+                {showLspLabels ? row.key : getLabel(row.key)}
               </div>
               {(() => {
                 const unit = row.unit ? ` ${row.unit}` : "";

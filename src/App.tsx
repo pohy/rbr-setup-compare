@@ -40,6 +40,7 @@ function App() {
   );
   const [setups, setSetups] = useState<CarSetup[]>([]);
   const [diffsOnly, setDiffsOnly] = usePersistentState("rbr-diffs-only", true);
+  const [showLspLabels, setShowLspLabels] = usePersistentState("rbr-lsp-labels", false);
   // URL-shared data overrides persisted preference (one-time)
   const hasAppliedSharedDiffsRef = useRef(false);
   if (!hasAppliedSharedDiffsRef.current && urlData.current.found) {
@@ -798,6 +799,17 @@ function App() {
                 Diffs only
               </span>
             </label>
+            <label className="flex cursor-pointer items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={showLspLabels}
+                onChange={(e) => setShowLspLabels(e.target.checked)}
+                className="cursor-pointer accent-accent"
+              />
+              <span className="text-text-secondary text-xs uppercase tracking-wider">
+                LSP labels
+              </span>
+            </label>
           </div>
 
           <div className="flex items-center gap-3">
@@ -894,6 +906,7 @@ function App() {
                 onSaveSetup={isViewingShared ? handleSaveSharedSetup : handleSaveSetup}
                 onReorderSetup={isViewingShared ? handleReorderSharedSetup : handleReorderSetup}
                 diffsOnly={diffsOnly && activeSetups.length > 1}
+                showLspLabels={showLspLabels}
                 editConfig={isViewingShared ? undefined : editConfig}
                 onStartEdit={isViewingShared ? undefined : handleStartEdit}
                 editDisabledReason={isViewingShared ? "Save setup to edit it" : undefined}
