@@ -74,6 +74,11 @@ export function clampToRange(value: number, range: RangeTriplet): number {
   if (range.step === 0) {
     return clamped;
   }
+  // Preserve endpoints so they remain reachable when step > (max - min),
+  // otherwise snapping would round them off the grid back to min.
+  if (clamped === range.min || clamped === range.max) {
+    return clamped;
+  }
   return range.min + Math.round((clamped - range.min) / range.step) * range.step;
 }
 

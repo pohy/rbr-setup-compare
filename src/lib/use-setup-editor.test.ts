@@ -232,6 +232,37 @@ describe("stepValue", () => {
   it("uses step/10 in fine mode", () => {
     expect(stepValue(200, 1, range, true)).toBe(205);
   });
+
+  // Step coarser than range width (e.g. MaxSteeringLock: min 0.749, max 0.751,
+  // step 0.010). Without endpoint preservation, clamp+snap returns min on every
+  // step, making the value stuck at min.
+  describe("with step larger than range width", () => {
+    const coarse = { min: 0.749, max: 0.751, step: 0.01 };
+
+    it("reaches max when stepping up from inside range", () => {
+      expect(stepValue(0.75, 1, coarse, false)).toBe(0.751);
+    });
+
+    it("reaches min when stepping down from inside range", () => {
+      expect(stepValue(0.75, -1, coarse, false)).toBe(0.749);
+    });
+
+    it("steps from min to max on +", () => {
+      expect(stepValue(0.749, 1, coarse, false)).toBe(0.751);
+    });
+
+    it("steps from max to min on -", () => {
+      expect(stepValue(0.751, -1, coarse, false)).toBe(0.749);
+    });
+
+    it("stays at max on + from max", () => {
+      expect(stepValue(0.751, 1, coarse, false)).toBe(0.751);
+    });
+
+    it("stays at min on - from min", () => {
+      expect(stepValue(0.749, -1, coarse, false)).toBe(0.749);
+    });
+  });
 });
 
 describe("useSetupEditor.setDiffMode", () => {
