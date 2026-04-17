@@ -169,6 +169,8 @@ export function ComparisonTable({
                     onSaveToSavedGames={editConfig?.onSaveToSavedGames ?? (() => {})}
                     canToggleDiffMode={editConfig?.canToggleDiffMode ?? false}
                     hasEdits={(editConfig?.edits.size ?? 0) > 0}
+                    referenceName={setupNames[0] ?? ""}
+                    originalName={setupNames[editConfig?.sourceIndex ?? 0] ?? ""}
                   />
                 </div>
               );
