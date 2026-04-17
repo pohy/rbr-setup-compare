@@ -6,32 +6,43 @@ export type RawRangeData = Map<string, Map<string, RangeTriplet>>;
 type SuffixPattern = {
   max: string;
   min: string;
-  step: string;
+  step: string | null;
   /** Suffix to append to the base name (e.g. "_NGP") */
   baseSuffix: string;
+  /** Default step when pattern has no explicit step key (e.g. integer option pairs) */
+  implicitStep?: number;
 };
 
 const SUFFIX_PATTERNS: SuffixPattern[] = [
   { max: "RangeMax", min: "RangeMin", step: "RangeStep", baseSuffix: "" },
   { max: "Max_NGP", min: "Min_NGP", step: "Step_NGP", baseSuffix: "_NGP" },
+  { max: "OptionsMax", min: "OptionsMin", step: null, baseSuffix: "", implicitStep: 1 },
   { max: "Max", min: "Min", step: "Step", baseSuffix: "" },
 ];
 
-function classifyKey(key: string): { base: string; role: "max" | "min" | "step" } | null {
+type Classified = {
+  base: string;
+  role: "max" | "min" | "step";
+  implicitStep?: number;
+};
+
+function classifyKey(key: string): Classified | null {
   for (const pattern of SUFFIX_PATTERNS) {
     if (key.endsWith(pattern.max)) {
       return {
         base: key.slice(0, -pattern.max.length) + pattern.baseSuffix,
         role: "max",
+        implicitStep: pattern.implicitStep,
       };
     }
     if (key.endsWith(pattern.min)) {
       return {
         base: key.slice(0, -pattern.min.length) + pattern.baseSuffix,
         role: "min",
+        implicitStep: pattern.implicitStep,
       };
     }
-    if (key.endsWith(pattern.step)) {
+    if (pattern.step !== null && key.endsWith(pattern.step)) {
       return {
         base: key.slice(0, -pattern.step.length) + pattern.baseSuffix,
         role: "step",
@@ -103,7 +114,7 @@ export function parseRangeFile(text: string): RawRangeData {
     expect(")"); // close section body
 
     // Group into triplets
-    const partials = new Map<string, Partial<RangeTriplet>>();
+    const partials = new Map<string, Partial<RangeTriplet> & { implicitStep?: number }>();
     for (const [key, value] of kvs) {
       const classified = classifyKey(key);
       if (!classified) {
@@ -111,15 +122,23 @@ export function parseRangeFile(text: string): RawRangeData {
       }
       const existing = partials.get(classified.base) ?? {};
       existing[classified.role] = value;
+      if (classified.implicitStep !== undefined) {
+        existing.implicitStep = classified.implicitStep;
+      }
       partials.set(classified.base, existing);
     }
 
-    // Only keep complete triplets
+    // Only keep complete triplets (step may come from explicit value or implicit default)
     const triplets = new Map<string, RangeTriplet>();
     for (const [base, partial] of partials) {
-      if (partial.min !== undefined && partial.max !== undefined && partial.step !== undefined) {
-        triplets.set(base, { min: partial.min, max: partial.max, step: partial.step });
+      if (partial.min === undefined || partial.max === undefined) {
+        continue;
       }
+      const step = partial.step ?? partial.implicitStep;
+      if (step === undefined) {
+        continue;
+      }
+      triplets.set(base, { min: partial.min, max: partial.max, step });
     }
 
     if (triplets.size > 0) {

@@ -102,6 +102,24 @@ describe("mapRangesToSetup", () => {
     const drive = mapped.get("Drive");
     expect(drive?.get("CenterDiffMaxTorque")).toBeDefined();
   });
+
+  it("maps FinalDrive → FinalDriveId in Drive with step=1", () => {
+    const drive = mapped.get("Drive");
+    expect(drive?.get("FinalDriveId")).toEqual({
+      min: 9,
+      max: 9,
+      step: 1,
+    });
+  });
+
+  it("maps DropGear → DropGearId in Drive with step=1", () => {
+    const drive = mapped.get("Drive");
+    expect(drive?.get("DropGearId")).toEqual({
+      min: 10,
+      max: 11,
+      step: 1,
+    });
+  });
 });
 
 describe("getRangeForKey", () => {

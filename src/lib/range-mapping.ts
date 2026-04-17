@@ -35,6 +35,8 @@ const KEY_MAP: Record<string, string> = {
   PlatformHeight: "StrutPlatformHeight",
   CenterDiffHandbrakeRelease: "CenterDiffHandbrakeRelease",
   LeftFootBrakeThreshold: "LeftFootBrakeThreshold",
+  FinalDrive: "FinalDriveId",
+  DropGear: "DropGearId",
 };
 
 const DIFF_PREFIXES = ["CenterDiff", "FrontDiff", "RearDiff", "LFCenterDiff"];

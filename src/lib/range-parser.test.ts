@@ -98,4 +98,23 @@ describe("parseRangeFile", () => {
       step: 0.001,
     });
   });
+
+  it("parses FinalDriveOptions pair with implicit step=1 in DriveOptions", () => {
+    const section = result.get("DriveOptions");
+    expect(section).toBeDefined();
+    expect(section?.get("FinalDrive")).toEqual({
+      min: 9,
+      max: 9,
+      step: 1,
+    });
+  });
+
+  it("parses DropGearOptions pair with implicit step=1 in DriveOptions", () => {
+    const section = result.get("DriveOptions");
+    expect(section?.get("DropGear")).toEqual({
+      min: 10,
+      max: 11,
+      step: 1,
+    });
+  });
 });
