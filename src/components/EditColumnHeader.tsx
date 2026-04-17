@@ -48,6 +48,8 @@ export function EditColumnHeader({
               }
             }}
             variant="accent"
+            disabled={!hasEdits}
+            title={!hasEdits ? "No changes to save" : undefined}
           >
             Save by overwriting...
           </PopoverMenu.Item>
