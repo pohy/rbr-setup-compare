@@ -557,6 +557,55 @@ describe("ComparisonTable LSP labels toggle", () => {
   });
 });
 
+describe("ComparisonTable save by overwriting button state", () => {
+  const result: ComparisonResult = [
+    {
+      sectionName: "Engine",
+      rows: [{ type: "data", key: "Power", values: [100, 200], isDifferent: true }],
+    },
+  ];
+
+  const sharedProps = {
+    result,
+    setupNames: ["setup1", "edited"],
+    onRemoveSetup: noop,
+    onSaveSetup: noop,
+    onReorderSetup: noop,
+    diffsOnly: false,
+  } as const;
+
+  it("enables 'Save by overwriting...' when there are pending edits", () => {
+    const edits = new Map([["Engine", new Map([["Power", 999]])]]);
+    render(
+      <ComparisonTable
+        {...sharedProps}
+        editConfig={makeEditConfig({ columnIndex: 1, canOverwrite: true, edits })}
+      />,
+    );
+
+    openEditPopover();
+
+    const overwriteButton = screen.getByRole("button", { name: /save by overwriting/i });
+    expect(overwriteButton).not.toBeDisabled();
+  });
+
+  it("disables 'Save by overwriting...' but keeps it visible when there are no edits", () => {
+    render(
+      <ComparisonTable
+        {...sharedProps}
+        editConfig={makeEditConfig({ columnIndex: 1, canOverwrite: true, edits: new Map() })}
+      />,
+    );
+
+    openEditPopover();
+
+    const overwriteButton = screen.getByRole("button", { name: /save by overwriting/i });
+    expect(overwriteButton).toBeDisabled();
+    expect(overwriteButton).toHaveAttribute("title");
+    expect(overwriteButton.getAttribute("title")).toBeTruthy();
+  });
+});
+
 describe("ComparisonTable remove button label", () => {
   const result: ComparisonResult = [
     {
