@@ -41,6 +41,7 @@ function App() {
   const [setups, setSetups] = useState<CarSetup[]>([]);
   const [diffsOnly, setDiffsOnly] = usePersistentState("rbr-diffs-only", true);
   const [showLspLabels, setShowLspLabels] = usePersistentState("rbr-lsp-labels", false);
+  const [enableReadonly, setEnableReadonly] = usePersistentState("rbr-enable-readonly", false);
   // URL-shared data overrides persisted preference (one-time)
   const hasAppliedSharedDiffsRef = useRef(false);
   if (!hasAppliedSharedDiffsRef.current && urlData.current.found) {
@@ -75,6 +76,7 @@ function App() {
 
   const editor = useSetupEditor();
   const [editRanges, setEditRanges] = useState<RangeMap | null>(null);
+  const [comparisonRanges, setComparisonRanges] = useState<RangeMap | null>(null);
   // Track file handles for directory-loaded setups (keyed by setup name/path)
   const fileHandles = useRef(new Map<string, FileSystemFileHandle>());
 
@@ -386,6 +388,26 @@ function App() {
     };
   }, [editor.editState, editRanges, loadRangesForSetup]);
 
+  // Eager-load ranges for the primary (first) setup so compareSetups can
+  // mark range-locked fields as readonly. Only FS mode — shared/manual
+  // setups have no accessible range files.
+  const primarySetupName = setups[0]?.name;
+  useEffect(() => {
+    if (!primarySetupName || isViewingShared) {
+      setComparisonRanges(null);
+      return;
+    }
+    let cancelled = false;
+    loadRangesForSetup(primarySetupName).then((ranges) => {
+      if (!cancelled) {
+        setComparisonRanges(ranges);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [primarySetupName, isViewingShared, loadRangesForSetup]);
+
   const handleStep = useCallback(
     (displaySection: string, key: string, direction: 1 | -1, fine: boolean) => {
       const rawSection = SECTION_UNRENAMES[displaySection] ?? displaySection;
@@ -672,7 +694,10 @@ function App() {
 
   const editedSetup = sourceIndex >= 0 ? editor.getEditedSetup() : null;
   const setupsForComparison = editedSetup ? [...activeSetups, editedSetup] : activeSetups;
-  const comparison = setupsForComparison.length >= 1 ? compareSetups(setupsForComparison) : null;
+  const comparison =
+    setupsForComparison.length >= 1
+      ? compareSetups(setupsForComparison, comparisonRanges ?? undefined)
+      : null;
 
   const setupNames = setupsForComparison.map((s) => s.name.split("/").pop() ?? s.name);
 
@@ -802,6 +827,20 @@ function App() {
                 Diffs only
               </span>
             </label>
+            <label
+              className="flex cursor-pointer items-center gap-1.5"
+              title="Show and allow editing of fields that RBR does not expose in the in-game editor"
+            >
+              <input
+                type="checkbox"
+                checked={enableReadonly}
+                onChange={(e) => setEnableReadonly(e.target.checked)}
+                className="cursor-pointer accent-accent"
+              />
+              <span className="text-text-secondary text-xs uppercase tracking-wider">
+                Enable read-only
+              </span>
+            </label>
             <label className="flex cursor-pointer items-center gap-1.5">
               <input
                 type="checkbox"
@@ -909,6 +948,7 @@ function App() {
                 onSaveSetup={isViewingShared ? handleSaveSharedSetup : handleSaveSetup}
                 onReorderSetup={isViewingShared ? handleReorderSharedSetup : handleReorderSetup}
                 diffsOnly={diffsOnly && activeSetups.length > 1}
+                enableReadonly={enableReadonly}
                 showLspLabels={showLspLabels}
                 editConfig={isViewingShared ? undefined : editConfig}
                 onStartEdit={isViewingShared ? undefined : handleStartEdit}
