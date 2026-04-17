@@ -14,6 +14,8 @@ type Props = {
   onSaveToSavedGames: () => void;
   canToggleDiffMode: boolean;
   hasEdits: boolean;
+  referenceName: string;
+  originalName: string;
 };
 
 export function EditColumnHeader({
@@ -29,7 +31,10 @@ export function EditColumnHeader({
   onSaveToSavedGames,
   canToggleDiffMode,
   hasEdits,
+  referenceName,
+  originalName,
 }: Props) {
+  const diffTargetName = diffMode === "vs-reference" ? originalName : referenceName;
   return (
     <PopoverMenu
       label={
@@ -74,7 +79,7 @@ export function EditColumnHeader({
         title={
           !canToggleDiffMode
             ? "Only one setup loaded — reference and original are the same"
-            : undefined
+            : `Compare vs ${diffTargetName}`
         }
       >
         {diffMode === "vs-reference" ? "Compare vs original" : "Compare vs reference"}

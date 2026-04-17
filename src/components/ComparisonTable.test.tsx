@@ -104,6 +104,65 @@ describe("ComparisonTable diff mode toggle", () => {
   });
 });
 
+describe("ComparisonTable diff mode toggle title shows target setup name", () => {
+  const result: ComparisonResult = [
+    {
+      sectionName: "Engine",
+      rows: [{ type: "data", key: "RPM", values: [5000, 5000, 5000], isDifferent: false }],
+    },
+  ];
+
+  it("shows original setup name in title when diffMode is vs-reference", () => {
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1.lsp", "setup2.lsp", "edited.lsp"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        editConfig={makeEditConfig({
+          canToggleDiffMode: true,
+          sourceIndex: 1,
+          diffRefIndex: 0,
+          columnIndex: 2,
+          diffMode: "vs-reference",
+        })}
+      />,
+    );
+
+    openEditPopover();
+
+    const toggleButton = screen.getByRole("button", { name: /compare vs original/i });
+    expect(toggleButton.getAttribute("title")).toBe("Compare vs setup2.lsp");
+  });
+
+  it("shows reference setup name in title when diffMode is vs-original", () => {
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1.lsp", "setup2.lsp", "edited.lsp"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        editConfig={makeEditConfig({
+          canToggleDiffMode: true,
+          sourceIndex: 1,
+          diffRefIndex: 1,
+          columnIndex: 2,
+          diffMode: "vs-original",
+        })}
+      />,
+    );
+
+    openEditPopover();
+
+    const toggleButton = screen.getByRole("button", { name: /compare vs reference/i });
+    expect(toggleButton.getAttribute("title")).toBe("Compare vs setup1.lsp");
+  });
+});
+
 describe("ComparisonTable diff calculation uses diffRefIndex", () => {
   // Editing first setup (sourceIndex=0): toggle disabled, always diffs against col 0
   it("editing first setup: toggle disabled, diffs against column 0", () => {
