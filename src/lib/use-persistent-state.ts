@@ -8,6 +8,7 @@ type StorageMap = {
   "rbr-edit-state": EditState | null;
   "rbr-diffs-only": boolean;
   "rbr-lsp-labels": boolean;
+  "rbr-enable-readonly": boolean;
   "rbr-manual-setups": ManualSetupEntry[];
 };
 

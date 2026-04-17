@@ -1,6 +1,41 @@
 import { SETUP_SCHEMA } from "../generated/setup-schema.ts";
+import { isWhitelistedPath } from "./field-defs.ts";
 import type { CarSetup } from "./lsp-parser.ts";
+import type { RangeMap } from "./range-mapping.ts";
+import type { RangeTriplet } from "./range-parser.ts";
 import { getUnit, SECTION_RENAMES, sanitizeSetup } from "./sanitize.ts";
+
+// Reverse of SECTION_RENAMES: display name → raw name.
+const SECTION_UNRENAMES: Record<string, string> = {};
+for (const [raw, display] of Object.entries(SECTION_RENAMES)) {
+  SECTION_UNRENAMES[display] = raw;
+}
+
+function isRangeEditable(range: RangeTriplet): boolean {
+  if (range.min === 0 && range.max === 0 && range.step === 0) {
+    return false;
+  }
+  if (range.min >= range.max) {
+    return false;
+  }
+  return true;
+}
+
+function computeIsReadonly(
+  displaySection: string,
+  key: string,
+  rangeMap: RangeMap | undefined,
+): boolean {
+  const rawSection = SECTION_UNRENAMES[displaySection] ?? displaySection;
+  if (!isWhitelistedPath(rawSection, key)) {
+    return true;
+  }
+  const range = rangeMap?.get(rawSection)?.get(key);
+  if (!range) {
+    return false;
+  }
+  return !isRangeEditable(range);
+}
 
 // Build canonical order lookups from SETUP_SCHEMA using sanitized section names
 const SECTION_ORDER = new Map<string, number>();
@@ -36,6 +71,7 @@ export type ComparisonRow = {
   key: string;
   values: (number | string | null)[];
   isDifferent: boolean;
+  isReadonly?: boolean;
   unit?: string;
 };
 
@@ -54,7 +90,7 @@ export type SectionComparison = {
 
 export type ComparisonResult = SectionComparison[];
 
-export function compareSetups(rawSetups: CarSetup[]): ComparisonResult {
+export function compareSetups(rawSetups: CarSetup[], rangeMap?: RangeMap): ComparisonResult {
   if (rawSetups.length === 0) {
     return [];
   }
@@ -115,8 +151,17 @@ export function compareSetups(rawSetups: CarSetup[]): ComparisonResult {
 
         // Hide rows where every value is null or 0
         const isEmpty = values.every((v) => v === null || v === 0);
+        const isReadonly = computeIsReadonly(sectionName, key, rangeMap);
 
-        return { type: "data" as const, key, values, isDifferent, unit: getUnit(key), isEmpty };
+        return {
+          type: "data" as const,
+          key,
+          values,
+          isDifferent,
+          isReadonly,
+          unit: getUnit(key),
+          isEmpty,
+        };
       })
       .filter((row) => !row.isEmpty);
 

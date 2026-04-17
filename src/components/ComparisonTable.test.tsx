@@ -751,3 +751,174 @@ describe("ComparisonTable remove button label", () => {
     expect(screen.getByRole("button", { name: "Remove and discard edits..." })).toBeInTheDocument();
   });
 });
+
+describe("ComparisonTable readonly row visibility", () => {
+  const result: ComparisonResult = [
+    {
+      sectionName: "Drive",
+      rows: [
+        {
+          type: "data",
+          key: "GearId2",
+          values: [3, 3],
+          isDifferent: false,
+          isReadonly: true,
+        },
+        {
+          type: "data",
+          key: "GearId3",
+          values: [4, 5],
+          isDifferent: true,
+          isReadonly: true,
+        },
+        {
+          type: "data",
+          key: "DropGearId",
+          values: [10, 10],
+          isDifferent: false,
+          isReadonly: false,
+        },
+      ],
+    },
+  ];
+
+  it("hides readonly rows that are not different when enableReadonly is off", () => {
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1", "setup2"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        enableReadonly={false}
+        showLspLabels={true}
+      />,
+    );
+
+    expect(screen.queryByText("GearId2")).not.toBeInTheDocument();
+    expect(screen.getByText("GearId3")).toBeInTheDocument();
+    expect(screen.getByText("DropGearId")).toBeInTheDocument();
+  });
+
+  it("shows all readonly rows when enableReadonly is on", () => {
+    render(
+      <ComparisonTable
+        result={result}
+        setupNames={["setup1", "setup2"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        enableReadonly={true}
+        showLspLabels={true}
+      />,
+    );
+
+    expect(screen.getByText("GearId2")).toBeInTheDocument();
+    expect(screen.getByText("GearId3")).toBeInTheDocument();
+    expect(screen.getByText("DropGearId")).toBeInTheDocument();
+  });
+
+  it("hides section when all rows are readonly and hidden", () => {
+    const allReadonly: ComparisonResult = [
+      {
+        sectionName: "Drive",
+        rows: [
+          {
+            type: "data",
+            key: "GearId2",
+            values: [3, 3],
+            isDifferent: false,
+            isReadonly: true,
+          },
+        ],
+      },
+    ];
+
+    render(
+      <ComparisonTable
+        result={allReadonly}
+        setupNames={["setup1", "setup2"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        enableReadonly={false}
+        showLspLabels={true}
+      />,
+    );
+
+    expect(screen.queryByText("Drive")).not.toBeInTheDocument();
+    expect(screen.queryByText("GearId2")).not.toBeInTheDocument();
+  });
+
+  it("renders readonly edit-column cell as plain text when enableReadonly is off", () => {
+    const withEdit: ComparisonResult = [
+      {
+        sectionName: "Drive",
+        rows: [
+          {
+            type: "data",
+            key: "GearId3",
+            values: [4, 5, 5],
+            isDifferent: true,
+            isReadonly: true,
+          },
+        ],
+      },
+    ];
+
+    render(
+      <ComparisonTable
+        result={withEdit}
+        setupNames={["setup1", "setup2", "edited"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        enableReadonly={false}
+        showLspLabels={true}
+        editConfig={makeEditConfig({ columnIndex: 2, diffRefIndex: 0 })}
+      />,
+    );
+
+    // Readonly row visible (because isDifferent) but edit column renders
+    // as plain cell (no editable cell testid).
+    expect(screen.getByText("GearId3")).toBeInTheDocument();
+    expect(screen.queryByTestId("edit-cell-Drive-GearId3")).not.toBeInTheDocument();
+  });
+
+  it("renders readonly edit-column cell as editable when enableReadonly is on", () => {
+    const withEdit: ComparisonResult = [
+      {
+        sectionName: "Drive",
+        rows: [
+          {
+            type: "data",
+            key: "GearId3",
+            values: [4, 5, 5],
+            isDifferent: true,
+            isReadonly: true,
+          },
+        ],
+      },
+    ];
+
+    render(
+      <ComparisonTable
+        result={withEdit}
+        setupNames={["setup1", "setup2", "edited"]}
+        onRemoveSetup={noop}
+        onSaveSetup={noop}
+        onReorderSetup={noop}
+        diffsOnly={false}
+        enableReadonly={true}
+        showLspLabels={true}
+        editConfig={makeEditConfig({ columnIndex: 2, diffRefIndex: 0 })}
+      />,
+    );
+
+    expect(screen.getByTestId("edit-cell-Drive-GearId3")).toBeInTheDocument();
+  });
+});

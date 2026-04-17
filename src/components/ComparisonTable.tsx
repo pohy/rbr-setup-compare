@@ -44,6 +44,7 @@ type Props = {
   onSaveSetup: (index: number) => void;
   onReorderSetup: (from: number, to: number) => void;
   diffsOnly: boolean;
+  enableReadonly?: boolean;
   showLspLabels?: boolean;
   editConfig?: EditConfig;
   onStartEdit?: (index: number) => void;
@@ -59,6 +60,7 @@ export function ComparisonTable({
   onSaveSetup,
   onReorderSetup,
   diffsOnly,
+  enableReadonly = false,
   showLspLabels = false,
   editConfig,
   onStartEdit,
@@ -282,22 +284,39 @@ export function ComparisonTable({
         {result.map((section) => {
           const isRowEditing = (key: string) =>
             editingCell?.section === section.sectionName && editingCell?.key === key;
-          const visibleRows = diffsOnly
-            ? section.rows.filter((r, i, arr) => {
-                if (r.type === "split") {
-                  const prev = arr[i - 1];
-                  const next = arr[i + 1];
-                  return (
-                    prev?.type === "data" &&
-                    (prev.isDifferent || isRowEditing(prev.key)) &&
-                    next?.type === "data" &&
-                    (next.isDifferent || isRowEditing(next.key))
-                  );
-                }
-                return r.isDifferent || isRowEditing(r.key);
-              })
-            : section.rows;
-          if (diffsOnly && visibleRows.length === 0) {
+
+          const showReadonlyRow = (r: (typeof section.rows)[number]) => {
+            if (r.type !== "data") {
+              return true;
+            }
+            if (enableReadonly || !r.isReadonly) {
+              return true;
+            }
+            return r.isDifferent || isRowEditing(r.key);
+          };
+
+          const showDiffRow = (
+            r: (typeof section.rows)[number],
+            i: number,
+            arr: typeof section.rows,
+          ) => {
+            if (r.type === "split") {
+              const prev = arr[i - 1];
+              const next = arr[i + 1];
+              return (
+                prev?.type === "data" &&
+                (prev.isDifferent || isRowEditing(prev.key)) &&
+                next?.type === "data" &&
+                (next.isDifferent || isRowEditing(next.key))
+              );
+            }
+            return r.isDifferent || isRowEditing(r.key);
+          };
+
+          const afterReadonly = section.rows.filter(showReadonlyRow);
+          const visibleRows = diffsOnly ? afterReadonly.filter(showDiffRow) : afterReadonly;
+          const hasVisibleData = visibleRows.some((r) => r.type === "data");
+          if (!hasVisibleData) {
             return null;
           }
           return (
@@ -310,6 +329,7 @@ export function ComparisonTable({
               onToggle={() => toggleSection(section.sectionName)}
               dragIndex={dragIndex}
               editConfig={editConfig}
+              enableReadonly={enableReadonly}
               showLspLabels={showLspLabels}
               onCellEditingChange={(s, key, editing) =>
                 setEditingCell(editing ? { section: s, key } : null)
@@ -330,6 +350,7 @@ function Section({
   onToggle,
   dragIndex,
   editConfig,
+  enableReadonly,
   showLspLabels,
   onCellEditingChange,
 }: {
@@ -340,6 +361,7 @@ function Section({
   onToggle: () => void;
   dragIndex: number | null;
   editConfig?: EditConfig;
+  enableReadonly: boolean;
   showLspLabels: boolean;
   onCellEditingChange?: (section: string, key: string, editing: boolean) => void;
 }) {
@@ -393,6 +415,7 @@ function Section({
                 title={showLspLabels ? getLabel(row.key) : row.key}
                 className={clsx(
                   "sticky left-0 z-[2] whitespace-nowrap border border-border bg-base p-2 text-text-secondary group-hover:bg-elevated",
+                  row.isReadonly && "opacity-60",
                 )}
               >
                 {showLspLabels ? row.key : getLabel(row.key)}
@@ -439,7 +462,9 @@ function Section({
                   const isEdited =
                     isEdit && editConfig?.edits.get(rawSection)?.has(row.key) === true;
 
-                  if (isEdit) {
+                  const readonlyLocked = isEdit && row.isReadonly && !enableReadonly;
+
+                  if (isEdit && !readonlyLocked) {
                     // Look up range for this row and convert to display units
                     let displayRange: RangeTriplet | undefined;
                     if (editConfig?.rangeMap) {
@@ -560,6 +585,7 @@ function Section({
                         i === 0 && !ratios && "z-[2]",
                         i === 0 && "sticky left-[var(--param-w)] bg-base group-hover:bg-elevated",
                         dragIndex !== null && dragIndex !== i && "opacity-50",
+                        row.isReadonly && !isEdit && "opacity-60",
                       )}
                     >
                       {val === null ? (
