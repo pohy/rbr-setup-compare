@@ -2,6 +2,9 @@ import type { CarSetup } from "./lsp-parser.ts";
 
 type FieldConfig = { modifier: number; unit: string };
 
+const PERCENTAGE_KEY =
+  /^((Center|Front|Rear|LFCenter)Diff(Throttle|Brake)_\d+|HandbrakePercentage_NGP|CenterDiffHandbrakeRelease|LeftFootBrakeThreshold)$/;
+
 const FIELD_CONFIGS: { test: (key: string) => boolean; config: FieldConfig }[] = [
   { test: (k) => k === "BumpHighSpeedBreak", config: { modifier: 1, unit: "m/s" } },
   { test: (k) => /Length|Height/.test(k), config: { modifier: 1000, unit: "mm" } },
@@ -9,6 +12,7 @@ const FIELD_CONFIGS: { test: (key: string) => boolean; config: FieldConfig }[] =
   { test: (k) => k.includes("Damping"), config: { modifier: 0.001, unit: "kN/m/s" } },
   { test: (k) => k.includes("Pressure"), config: { modifier: 0.001, unit: "kPa" } },
   { test: (k) => k.includes("Torque"), config: { modifier: 1, unit: "Nm" } },
+  { test: (k) => PERCENTAGE_KEY.test(k), config: { modifier: 100, unit: "%" } },
 ];
 
 function getFieldConfig(key: string): FieldConfig | undefined {
@@ -21,6 +25,16 @@ export function getUnit(key: string): string | undefined {
 
 export function getModifier(key: string): number {
   return getFieldConfig(key)?.modifier ?? 1;
+}
+
+export function formatUnitSuffix(unit: string | undefined): string {
+  if (!unit) {
+    return "";
+  }
+  if (unit === "%") {
+    return unit;
+  }
+  return ` ${unit}`;
 }
 
 export function unsanitizeValue(key: string, displayValue: number): number {
