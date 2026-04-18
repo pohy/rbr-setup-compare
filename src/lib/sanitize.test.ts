@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getModifier, unsanitizeValue } from "./sanitize.ts";
+import { formatUnitSuffix, getModifier, getUnit, unsanitizeValue } from "./sanitize.ts";
 
 describe("getModifier", () => {
   it("returns 0.001 for Stiffness keys", () => {
@@ -37,6 +37,54 @@ describe("getModifier", () => {
     expect(getModifier("MaxSteeringLock")).toBe(1);
     expect(getModifier("TopMountSlot")).toBe(1);
   });
+
+  it("returns 100 for percentage keys", () => {
+    expect(getModifier("HandbrakePercentage_NGP")).toBe(100);
+    expect(getModifier("CenterDiffHandbrakeRelease")).toBe(100);
+    expect(getModifier("LeftFootBrakeThreshold")).toBe(100);
+    expect(getModifier("CenterDiffThrottle_00")).toBe(100);
+    expect(getModifier("FrontDiffBrake_05")).toBe(100);
+    expect(getModifier("RearDiffThrottle_10")).toBe(100);
+    expect(getModifier("LFCenterDiffBrake_03")).toBe(100);
+  });
+
+  it("does not treat non-indexed diff torque as percentage", () => {
+    expect(getModifier("FrontDiffMaxTorque")).toBe(1);
+    expect(getModifier("CenterDiffMaxTorque")).toBe(1);
+  });
+});
+
+describe("getUnit", () => {
+  it("returns % for percentage keys", () => {
+    expect(getUnit("HandbrakePercentage_NGP")).toBe("%");
+    expect(getUnit("CenterDiffHandbrakeRelease")).toBe("%");
+    expect(getUnit("LeftFootBrakeThreshold")).toBe("%");
+    expect(getUnit("CenterDiffThrottle_00")).toBe("%");
+    expect(getUnit("RearDiffBrake_10")).toBe("%");
+    expect(getUnit("LFCenterDiffThrottle_07")).toBe("%");
+  });
+
+  it("does not return % for non-percentage diff torque keys", () => {
+    expect(getUnit("FrontDiffMaxTorque")).toBe("Nm");
+    expect(getUnit("CenterDiffMaxTorque")).toBe("Nm");
+  });
+});
+
+describe("formatUnitSuffix", () => {
+  it("returns empty when no unit", () => {
+    expect(formatUnitSuffix(undefined)).toBe("");
+    expect(formatUnitSuffix("")).toBe("");
+  });
+
+  it("prepends space for word-like units", () => {
+    expect(formatUnitSuffix("mm")).toBe(" mm");
+    expect(formatUnitSuffix("kN/m")).toBe(" kN/m");
+    expect(formatUnitSuffix("Nm")).toBe(" Nm");
+  });
+
+  it("omits space for percent sign", () => {
+    expect(formatUnitSuffix("%")).toBe("%");
+  });
 });
 
 describe("unsanitizeValue", () => {
@@ -66,6 +114,13 @@ describe("unsanitizeValue", () => {
   it("returns identity for keys without config", () => {
     expect(unsanitizeValue("MaxSteeringLock", 0.75)).toBe(0.75);
   });
+
+  it("converts display % back to 0-1 ratio for percentage keys", () => {
+    expect(unsanitizeValue("HandbrakePercentage_NGP", 50)).toBe(0.5);
+    expect(unsanitizeValue("CenterDiffHandbrakeRelease", 100)).toBe(1);
+    expect(unsanitizeValue("FrontDiffThrottle_00", 75)).toBe(0.75);
+    expect(unsanitizeValue("LeftFootBrakeThreshold", 0)).toBe(0);
+  });
 });
 
 describe("sanitize → unsanitize round-trip precision", () => {
@@ -93,6 +148,10 @@ describe("sanitize → unsanitize round-trip precision", () => {
     ["FrontDiffMaxTorque", 90], // 1 modifier
     ["BumpHighSpeedBreak", 0.5], // 1 modifier
     ["MaxSteeringLock", 0.75], // no config (1)
+    ["HandbrakePercentage_NGP", 0.63], // 100 modifier
+    ["CenterDiffHandbrakeRelease", 0.5],
+    ["FrontDiffThrottle_00", 0.5],
+    ["RearDiffBrake_10", 0.05],
   ])("%s with raw=%s round-trips correctly", (key, rawValue) => {
     const display = sanitizeNumeric(key, rawValue);
     const backToRaw = unsanitizeValue(key, display);

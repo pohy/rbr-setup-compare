@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RangeTriplet } from "../lib/range-parser.ts";
+import { formatUnitSuffix } from "../lib/sanitize.ts";
 import { stepDraft } from "../lib/step-draft.ts";
 
 type Props = {
@@ -178,7 +179,7 @@ export function EditableCell({
     setHoverZone(getZone(e.clientX, cellRef.current.getBoundingClientRect()));
   }, []);
 
-  const unitSuffix = unit ? ` ${unit}` : "";
+  const unitSuffix = formatUnitSuffix(unit);
   const displayText = value === null ? "\u2014" : `${value}${unitSuffix}`;
 
   const titleText = range ? `${range.min} – ${range.max} (step ${range.step})` : undefined;

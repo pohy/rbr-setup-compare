@@ -4,7 +4,7 @@ import type { ComparisonResult } from "../lib/compare.ts";
 import { getLabel, getSectionLabel } from "../lib/label-map.ts";
 import type { RangeMap } from "../lib/range-mapping.ts";
 import type { RangeTriplet } from "../lib/range-parser.ts";
-import { getModifier, SECTION_RENAMES } from "../lib/sanitize.ts";
+import { formatUnitSuffix, getModifier, SECTION_RENAMES } from "../lib/sanitize.ts";
 import type { DiffMode } from "../lib/use-setup-editor.ts";
 import { EditableCell } from "./EditableCell.tsx";
 import { EditColumnHeader } from "./EditColumnHeader.tsx";
@@ -421,7 +421,7 @@ function Section({
                 {showLspLabels ? row.key : getLabel(row.key)}
               </div>
               {(() => {
-                const unit = row.unit ? ` ${row.unit}` : "";
+                const unit = formatUnitSuffix(row.unit);
                 const maxDecimals = Math.max(
                   0,
                   ...row.values.map((v) => {
