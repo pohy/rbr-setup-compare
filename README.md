@@ -8,26 +8,22 @@ Compare Richard Burns Rally setup files side by side.
 
 ## Features
 
-- **Drag-and-drop import** — load `.lsp` setup files by dropping them onto the app or using a file picker
-- **RBR directory browsing** — point the app at your RBR installation to browse and select setups from `rsfdata/`, `Physics/`, and `SavedGames/` directories, with cross-location deduplication (uses File System Access API, remembered across sessions)
-- **Side-by-side comparison** — view multiple setups in a single table, organized by section (Suspension, Engine, Tyres, etc.)
-- **Difference highlighting** — individual cells that differ from the reference setup are highlighted, with numeric deltas shown as color-coded +/- values
-- **Front/rear split ratios** — paired Front/Rear parameters are grouped together with the split ratio (e.g. 72:28) overlaid between them
-- **Diffs-only mode** — toggle to hide matching parameters and focus on what's different
-- **Units and formatting** — values are displayed with appropriate units (mm, kN/m, kPa, etc.) and consistent decimal precision
-- **Sticky headers and columns** — parameter names and setup columns stay visible while scrolling
-- **Collapsible sections** — expand or collapse setup sections individually
-- **Drag-to-reorder** — rearrange setup columns by dragging
-- **Setup editing** — click a cell to type a new value, or click-and-drag to adjust incrementally (hold Shift for fine 1/10th steps); values are clamped to valid ranges when car metadata is available
-- **Edit diff modes** — compare edits against the original setup or against the reference column
-- **Save edited setups** — download as `.lsp`, overwrite the original file in your RBR directory, or rename and save alongside it
-- **Setup management** — add, remove individual setups, or clear all at once
-- **Shareable links** — copy a URL that encodes the current comparison, so others can open it without needing the original files
+- **Import** — drag-and-drop or file picker; manually loaded setups persist across refresh
+- **RBR directory** — browse `rsfdata/`, `Physics/`, and `SavedGames/` with cross-location deduplication; external file changes auto-detected (File System Access API, remembered across sessions)
+- **Filter** — search the browser by car or file name
+- **Comparison table** — side-by-side columns grouped by section, with sticky headers/columns, collapsible sections, and drag-to-reorder
+- **Diff highlighting** — differing cells highlighted with color-coded +/- deltas; paired Front/Rear rows show split ratio (e.g. 72:28); diffs-only toggle hides matching rows
+- **Labels & units** — in-game labels (toggle to raw `.lsp` keys); values in mm, kN/m, kPa, %, etc. with consistent precision
+- **Editing** — click cell to type, drag to adjust, or click left/right zones to step by field increment (Shift = 1/10 step); values clamped to the car's range with live range-fill background; L/R edits mirror to paired side; per-cell reset; non-editable fields hidden
+- **Edit diff modes** — compare edits against original or a chosen reference column (hover toggle to see target)
+- **Save** — download `.lsp`, overwrite original (with confirmation), rename-and-save, or save as new into `SavedGames/`; defaults protected; in-progress edits persist across refresh
+- **Setup management** — add, remove, or clear all; confirms before discarding edits
+- **Shareable links** — URL encodes the comparison; opens in a separate view with an opt-in toggle to import into "My Setups"
 
 ## Credits
 
-- [pmfrlyn/RBRTools](https://github.com/pmfrlyn/RBRTools) — Python parser used as reference for the `.lsp` file format and parsing logic
-- [pshires/RbrSetupCompare](https://github.com/pshires/RbrSetupCompare) — Ruby app used as reference for unit conversions and value sanitization
-- [RBR Setup Studio](https://rbr-setup-studio.web.app/) — UI/UX reference for setup value display
-- [RallySimFans](https://rallysimfans.hu) — community platform whose directory structure conventions (`rsfdata/`, car naming, RSF IDs) the app supports
-- [NGP6 physics plugin](https://rallysimfans.hu) — defines the modern `.lsp` format variant and `_NGP` parameters
+- [pmfrlyn/RBRTools](https://github.com/pmfrlyn/RBRTools)
+- [pshires/RbrSetupCompare](https://github.com/pshires/RbrSetupCompare)
+- [RBR Setup Studio](https://rbr-setup-studio.web.app/)
+- [RallySimFans](https://rallysimfans.hu)
+- [NGP6 physics plugin](https://rallysimfans.hu)
